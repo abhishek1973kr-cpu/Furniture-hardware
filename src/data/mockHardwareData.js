@@ -30,7 +30,8 @@ export const INITIAL_ITEMS = [
     minStock: 15,
     spaceRequired: 30,
     location: "Gallery Wing A - Salon 01",
-    price: 2450, // Between ₹1500 - ₹2500
+    price: 2450, // Selling Price (₹)
+    costPrice: 1550, // Cost Price (₹)
     lastUpdated: "2026-10-29",
     supplier: "VibeFab Atelier Milano",
     images: [
@@ -54,7 +55,8 @@ export const INITIAL_ITEMS = [
     minStock: 20,
     spaceRequired: 22,
     location: "Studio Vault B - Bay 04",
-    price: 1850, // Between ₹1500 - ₹2500
+    price: 1850,
+    costPrice: 1150,
     lastUpdated: "2026-10-28",
     supplier: "VibeFab Travel Atelier",
     images: [
@@ -78,7 +80,8 @@ export const INITIAL_ITEMS = [
     minStock: 12,
     spaceRequired: 45,
     location: "Showroom Hall C - Rack 08",
-    price: 2300, // Between ₹1500 - ₹2500
+    price: 2300,
+    costPrice: 1450,
     lastUpdated: "2026-10-27",
     supplier: "VibeFab Woodworks",
     images: [
@@ -102,7 +105,8 @@ export const INITIAL_ITEMS = [
     minStock: 15,
     spaceRequired: 38,
     location: "Vault Wing D - Bin 02",
-    price: 1950, // Between ₹1500 - ₹2500
+    price: 1950,
+    costPrice: 1200,
     lastUpdated: "2026-10-26",
     supplier: "VibeFab Precision Leather",
     images: [
@@ -126,7 +130,8 @@ export const INITIAL_ITEMS = [
     minStock: 20,
     spaceRequired: 28,
     location: "Gallery Wing A - Salon 03",
-    price: 2490, // Between ₹1500 - ₹2500
+    price: 2490,
+    costPrice: 1600,
     lastUpdated: "2026-10-25",
     supplier: "VibeFab Atelier Milano",
     images: [
@@ -150,7 +155,8 @@ export const INITIAL_ITEMS = [
     minStock: 25,
     spaceRequired: 18,
     location: "Studio Vault B - Bay 07",
-    price: 1650, // Between ₹1500 - ₹2500
+    price: 1650,
+    costPrice: 1050,
     lastUpdated: "2026-10-24",
     supplier: "VibeFab Travel Atelier",
     images: [
@@ -174,7 +180,8 @@ export const INITIAL_ITEMS = [
     minStock: 18,
     spaceRequired: 25,
     location: "Showroom Hall C - Rack 11",
-    price: 1750, // Between ₹1500 - ₹2500
+    price: 1750,
+    costPrice: 1100,
     lastUpdated: "2026-10-23",
     supplier: "VibeFab Woodworks",
     images: [
@@ -198,7 +205,8 @@ export const INITIAL_ITEMS = [
     minStock: 20,
     spaceRequired: 20,
     location: "Vault Wing D - Bin 09",
-    price: 2150, // Between ₹1500 - ₹2500
+    price: 2150,
+    costPrice: 1350,
     lastUpdated: "2026-10-22",
     supplier: "VibeFab Precision Metal",
     images: [

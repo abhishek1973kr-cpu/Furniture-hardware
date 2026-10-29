@@ -100,22 +100,32 @@ export default function InventoryTable({
       "Category",
       "Description",
       "Stock",
-      "Price (INR)",
+      "Selling Price (INR)",
+      "Cost Price (INR)",
+      "Unit Profit (INR)",
       "Location",
       "Supplier",
     ];
 
-    const rows = filteredItems.map((item) => [
-      item.id,
-      item.sku || "",
-      `"${(item.name || "").replace(/"/g, '""')}"`,
-      `"${(item.category || "").replace(/"/g, '""')}"`,
-      `"${(item.description || "").replace(/"/g, '""')}"`,
-      item.stock,
-      item.price || 0,
-      `"${(item.location || "").replace(/"/g, '""')}"`,
-      `"${(item.supplier || "").replace(/"/g, '""')}"`,
-    ]);
+    const rows = filteredItems.map((item) => {
+      const sell = item.price || 0;
+      const cost = item.costPrice !== undefined ? item.costPrice : Math.round(sell * 0.65);
+      const profit = Math.max(0, sell - cost);
+
+      return [
+        item.id,
+        item.sku || "",
+        `"${(item.name || "").replace(/"/g, '""')}"`,
+        `"${(item.category || "").replace(/"/g, '""')}"`,
+        `"${(item.description || "").replace(/"/g, '""')}"`,
+        item.stock,
+        sell,
+        cost,
+        profit,
+        `"${(item.location || "").replace(/"/g, '""')}"`,
+        `"${(item.supplier || "").replace(/"/g, '""')}"`,
+      ];
+    });
 
     const csvContent =
       "data:text/csv;charset=utf-8," +
@@ -381,15 +391,15 @@ export default function InventoryTable({
                       </span>
                     </td>
 
-                    {/* Price in INR (₹) */}
+                    {/* Price in INR (₹) & Cost */}
                     <td className="py-4 px-4 whitespace-nowrap">
                       <div className="flex items-baseline gap-1">
                         <span className="font-serif font-bold text-sm text-[#1A1A1A]">
                           ₹{(item.price || 0).toLocaleString()}
                         </span>
                       </div>
-                      <span className="text-[10px] text-[#888888] font-mono block">
-                        Direct Atelier
+                      <span className="text-[10px] text-[#7A613E] font-mono block">
+                        Cost: ₹{(item.costPrice !== undefined ? item.costPrice : Math.round(Number(item.price || 0) * 0.65)).toLocaleString()}
                       </span>
                     </td>
 
