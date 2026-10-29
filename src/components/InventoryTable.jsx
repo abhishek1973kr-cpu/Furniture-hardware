@@ -16,6 +16,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  Sparkles,
 } from "lucide-react";
 
 export default function InventoryTable({
@@ -33,7 +35,7 @@ export default function InventoryTable({
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
 
-  // Gallery Quick Preview Modal State
+  // Gallery Quick Preview Modal State (8-image lightbox)
   const [galleryModalItem, setGalleryModalItem] = useState(null);
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
 
@@ -48,20 +50,21 @@ export default function InventoryTable({
           return false;
         }
 
-        if (stockFilter === "low" && item.stock > (item.minStock || 25)) {
+        if (stockFilter === "low" && item.stock > (item.minStock || 15)) {
           return false;
         }
-        if (stockFilter === "in_stock" && item.stock <= (item.minStock || 25)) {
+        if (stockFilter === "in_stock" && item.stock <= (item.minStock || 15)) {
           return false;
         }
 
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
-          const matchesName = item.name.toLowerCase().includes(q);
+          const matchesName = (item.name || "").toLowerCase().includes(q);
           const matchesSku = (item.sku || "").toLowerCase().includes(q);
           const matchesLocation = (item.location || "").toLowerCase().includes(q);
           const matchesCat = (item.category || "").toLowerCase().includes(q);
-          return matchesName || matchesSku || matchesLocation || matchesCat;
+          const matchesDesc = (item.description || "").toLowerCase().includes(q);
+          return matchesName || matchesSku || matchesLocation || matchesCat || matchesDesc;
         }
 
         return true;
@@ -95,55 +98,66 @@ export default function InventoryTable({
       "SKU",
       "Name",
       "Category",
+      "Description",
       "Stock",
-      "Space Required",
+      "Price (INR)",
       "Location",
-      "Price (INR ₹)",
+      "Supplier",
     ];
-    const rows = filteredItems.map((i) => [
-      i.id,
-      i.sku,
-      `"${i.name.replace(/"/g, '""')}"`,
-      `"${i.category}"`,
-      i.stock,
-      i.spaceRequired,
-      `"${i.location}"`,
-      i.price,
+
+    const rows = filteredItems.map((item) => [
+      item.id,
+      item.sku || "",
+      `"${(item.name || "").replace(/"/g, '""')}"`,
+      `"${(item.category || "").replace(/"/g, '""')}"`,
+      `"${(item.description || "").replace(/"/g, '""')}"`,
+      item.stock,
+      item.price || 0,
+      `"${(item.location || "").replace(/"/g, '""')}"`,
+      `"${(item.supplier || "").replace(/"/g, '""')}"`,
     ]);
 
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `furniture_hardware_inventory_${Date.now()}.csv`);
+    link.setAttribute(
+      "download",
+      `vibefab_luxury_inventory_${new Date().toISOString().slice(0, 10)}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Quick view gallery modal handler
-  const openGalleryModal = (item) => {
+  const openGalleryModal = (item, initialIndex = 0) => {
     setGalleryModalItem(item);
+    setActiveGalleryIndex(initialIndex);
+  };
+
+  const closeGalleryModal = () => {
+    setGalleryModalItem(null);
     setActiveGalleryIndex(0);
   };
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden relative">
+    <div className="bg-white rounded-3xl border border-[#E8E2D9] shadow-sm overflow-hidden relative">
       {/* Table Toolbar Header with Prominent Circular '+' Button */}
-      <div className="p-4 sm:p-6 border-b border-zinc-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="p-5 sm:p-7 border-b border-[#E8E2D9] flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h3 className="text-base sm:text-lg font-bold text-zinc-950 tracking-tight">
-              Hardware Inventory
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg sm:text-xl font-serif font-bold text-[#1A1A1A] tracking-tight">
+              Curated Luxury Inventory
             </h3>
-            <span className="text-xs font-mono bg-zinc-100 text-zinc-800 px-2.5 py-0.5 rounded-full border border-zinc-200">
-              {filteredItems.length} items
+            <span className="text-xs font-mono font-semibold bg-[#F4EFE6] text-[#7A613E] px-3 py-1 rounded-full border border-[#E2DACF]">
+              {filteredItems.length} pieces
             </span>
           </div>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Real-time catalog with 7-image gallery support, stock alerts, and instant CRUD.
+          <p className="text-xs text-[#666666] mt-1">
+            Haute living inventory with 8-image perspective galleries and real-time Firestore synchronization.
           </p>
         </div>
 
@@ -151,8 +165,8 @@ export default function InventoryTable({
         <div className="flex items-center gap-3">
           <button
             onClick={onResetData}
-            title="Reset sample data"
-            className="p-2.5 text-zinc-500 hover:text-black hover:bg-zinc-100 rounded-lg border border-zinc-200 transition-colors"
+            title="Reset to default luxury catalog"
+            className="p-2.5 text-[#666666] hover:text-[#1A1A1A] hover:bg-[#F4EFE6] rounded-2xl border border-[#E8E2D9] transition-all"
             aria-label="Reset items"
           >
             <RotateCcw className="w-4 h-4" />
@@ -161,10 +175,10 @@ export default function InventoryTable({
           <button
             onClick={exportCSV}
             title="Export CSV"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-zinc-700 hover:text-black bg-white hover:bg-zinc-50 rounded-lg border border-zinc-200 transition-colors"
+            className="hidden sm:flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold text-[#444444] hover:text-[#1A1A1A] bg-[#F9F8F6] hover:bg-[#F4EFE6] rounded-2xl border border-[#E8E2D9] transition-colors"
           >
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
+            <Download className="w-3.5 h-3.5 text-[#C5A880]" />
+            <span>Export CSV</span>
           </button>
 
           {/* ========================================================================= */}
@@ -173,30 +187,30 @@ export default function InventoryTable({
           <div className="relative group">
             <button
               onClick={onOpenAddItem}
-              aria-label="Add New Item"
-              className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black text-white hover:bg-zinc-800 active:scale-95 hover:scale-105 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 ring-4 ring-zinc-100 hover:ring-zinc-200 focus:outline-hidden"
+              aria-label="Add New Product"
+              className="relative w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-[#1A1A1A] text-[#C5A880] hover:bg-[#C5A880] hover:text-[#1A1A1A] active:scale-95 hover:scale-105 flex items-center justify-center shadow-md hover:shadow-xl transition-all duration-300 ring-4 ring-[#F4EFE6] hover:ring-[#E8E2D9] focus:outline-hidden cursor-pointer"
             >
-              <Plus className="w-6 h-6 stroke-[2.4] transition-transform duration-200 group-hover:rotate-90" />
+              <Plus className="w-6 h-6 stroke-[2.4] transition-transform duration-300 group-hover:rotate-90" />
             </button>
 
             {/* Hover Tooltip */}
-            <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-30 whitespace-nowrap bg-zinc-950 text-white text-[11px] font-medium px-2.5 py-1 rounded shadow-md pointer-events-none">
-              Add New Item (7-Image Gallery)
+            <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-30 whitespace-nowrap bg-[#1A1A1A] text-[#F9F8F6] text-[11px] font-medium px-3 py-1.5 rounded-2xl shadow-lg border border-[#C5A880]/30 pointer-events-none">
+              Add Luxury Piece (8-Image Gallery)
             </div>
           </div>
         </div>
       </div>
 
       {/* Filter and Controls Sub-bar */}
-      <div className="p-4 bg-zinc-50/70 border-b border-zinc-200 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 sm:px-6 bg-[#F9F8F6] border-b border-[#E8E2D9] flex flex-wrap items-center justify-between gap-3">
         {/* Category & Status Quick Filters */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Category Dropdown */}
           <div className="relative">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="text-xs bg-white text-zinc-800 border border-zinc-200 rounded-lg px-3 py-1.5 pr-8 focus:border-black focus:ring-1 focus:ring-black outline-hidden transition-colors"
+              className="text-xs font-medium bg-white text-[#1A1A1A] border border-[#E8E2D9] rounded-2xl px-3.5 py-2 pr-8 focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 outline-hidden transition-all shadow-2xs"
             >
               {categories.map((c) => (
                 <option key={c} value={c}>
@@ -207,43 +221,43 @@ export default function InventoryTable({
           </div>
 
           {/* Stock Filter Pills */}
-          <div className="inline-flex rounded-lg border border-zinc-200 bg-white p-0.5">
+          <div className="inline-flex rounded-2xl border border-[#E8E2D9] bg-white p-1 shadow-2xs">
             <button
               onClick={() => setStockFilter("all")}
-              className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+              className={`px-3 py-1 text-xs rounded-xl font-medium transition-all ${
                 stockFilter === "all"
-                  ? "bg-black text-white"
-                  : "text-zinc-600 hover:text-black"
+                  ? "bg-[#1A1A1A] text-white shadow-xs"
+                  : "text-[#666666] hover:text-[#1A1A1A]"
               }`}
             >
-              All
+              All Pieces
             </button>
             <button
               onClick={() => setStockFilter("low")}
-              className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+              className={`px-3 py-1 text-xs rounded-xl font-medium transition-all ${
                 stockFilter === "low"
-                  ? "bg-black text-white"
-                  : "text-zinc-600 hover:text-black"
+                  ? "bg-[#C5A880] text-[#1A1A1A] font-semibold shadow-xs"
+                  : "text-[#666666] hover:text-[#1A1A1A]"
               }`}
             >
-              Low Stock
+              Low Reserve
             </button>
             <button
               onClick={() => setStockFilter("in_stock")}
-              className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+              className={`px-3 py-1 text-xs rounded-xl font-medium transition-all ${
                 stockFilter === "in_stock"
-                  ? "bg-black text-white"
-                  : "text-zinc-600 hover:text-black"
+                  ? "bg-[#1A1A1A] text-white shadow-xs"
+                  : "text-[#666666] hover:text-[#1A1A1A]"
               }`}
             >
-              Well Stocked
+              In Atelier
             </button>
           </div>
         </div>
 
         {/* Status Count Summary */}
-        <div className="text-xs text-zinc-500 font-mono">
-          Showing {filteredItems.length} of {items.length} hardware items
+        <div className="text-xs text-[#777777] font-mono">
+          Showing <span className="font-semibold text-[#1A1A1A]">{filteredItems.length}</span> of {items.length} catalog items
         </div>
       </div>
 
@@ -251,192 +265,198 @@ export default function InventoryTable({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-zinc-200 bg-white text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+            <tr className="border-b border-[#E8E2D9] bg-[#FAF8F5] text-[11px] font-bold text-[#555555] uppercase tracking-wider">
+              <th className="py-3.5 px-4 sm:px-6">Piece / Specification</th>
               <th
-                onClick={() => handleSort("name")}
-                className="py-3.5 px-4 sm:px-6 cursor-pointer select-none hover:text-zinc-900 transition-colors"
+                onClick={() => handleSort("category")}
+                className="py-3.5 px-4 cursor-pointer hover:text-[#1A1A1A] transition-colors"
               >
-                <div className="flex items-center gap-1.5">
-                  <span>Item & 7-Photo Gallery</span>
-                  <ArrowUpDown className="w-3 h-3 text-zinc-400" />
+                <div className="flex items-center gap-1">
+                  <span>Category</span>
+                  <ArrowUpDown className="w-3 h-3 text-[#A59E92]" />
                 </div>
               </th>
-
-              <th className="py-3.5 px-4 sm:px-6">Category</th>
-
+              <th
+                onClick={() => handleSort("price")}
+                className="py-3.5 px-4 cursor-pointer hover:text-[#1A1A1A] transition-colors"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Price (INR)</span>
+                  <ArrowUpDown className="w-3 h-3 text-[#A59E92]" />
+                </div>
+              </th>
               <th
                 onClick={() => handleSort("stock")}
-                className="py-3.5 px-4 sm:px-6 cursor-pointer select-none hover:text-zinc-900 transition-colors"
+                className="py-3.5 px-4 cursor-pointer hover:text-[#1A1A1A] transition-colors"
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <span>Stock Quantity</span>
-                  <ArrowUpDown className="w-3 h-3 text-zinc-400" />
+                  <ArrowUpDown className="w-3 h-3 text-[#A59E92]" />
                 </div>
               </th>
-
-              <th className="py-3.5 px-4 sm:px-6">Storage Location</th>
-
-              <th
-                onClick={() => handleSort("spaceRequired")}
-                className="py-3.5 px-4 sm:px-6 cursor-pointer select-none hover:text-zinc-900 transition-colors hidden md:table-cell"
-              >
-                <div className="flex items-center gap-1.5">
-                  <span>Space Req.</span>
-                  <ArrowUpDown className="w-3 h-3 text-zinc-400" />
-                </div>
-              </th>
-
+              <th className="py-3.5 px-4 hidden md:table-cell">Gallery / Vault</th>
               <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
             </tr>
           </thead>
-
-          <tbody className="divide-y divide-zinc-100 text-xs text-zinc-800">
+          <tbody className="divide-y divide-[#EFEAE2] text-xs">
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-zinc-400">
-                  <div className="flex flex-col items-center justify-center">
-                    <PackageCheck className="w-9 h-9 text-zinc-300 mb-2" />
-                    <p className="font-semibold text-zinc-800">No hardware items found</p>
-                    <p className="text-xs text-zinc-400 mt-1 max-w-sm">
-                      Click the circular '+' button above to add a new hardware item
-                      with its 7-image gallery.
+                <td colSpan={6} className="py-12 text-center text-[#888888]">
+                  <div className="max-w-xs mx-auto">
+                    <XCircle className="w-8 h-8 text-[#A59E92] mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-[#1A1A1A]">No pieces found</p>
+                    <p className="text-xs text-[#666666] mt-0.5">
+                      Try clearing search queries or switching category filter.
                     </p>
                   </div>
                 </td>
               </tr>
             ) : (
               filteredItems.map((item) => {
-                const isLowStock = item.stock <= (item.minStock || 25);
-                const isOutOfStock = item.stock === 0;
-                const imagesArray = Array.isArray(item.images) ? item.images : [];
-                const primaryImage = imagesArray.find(Boolean) || null;
-                const validPhotosCount = imagesArray.filter(Boolean).length;
+                const photos = Array.isArray(item.images)
+                  ? item.images.filter(Boolean)
+                  : [];
+                const heroPhoto = photos[0] || null;
+                const photoCount = photos.length;
+                const isLow = Number(item.stock) <= Number(item.minStock || 15);
 
                 return (
                   <tr
                     key={item.id}
-                    className="hover:bg-zinc-50/90 transition-colors duration-150 group"
+                    className="hover:bg-[#FAF8F5]/90 transition-colors duration-150 group"
                   >
-                    {/* Item Name & 7-Photo Thumbnail */}
-                    <td className="py-3.5 px-4 sm:px-6">
-                      <div className="flex items-center gap-3">
-                        {/* Thumbnail Slot */}
+                    {/* Item Name & 8-Image Preview Slot */}
+                    <td className="py-4 px-4 sm:px-6">
+                      <div className="flex items-start gap-3.5">
+                        {/* Thumbnail with 8-Image Click Trigger */}
                         <div
-                          onClick={() => openGalleryModal(item)}
-                          className="relative w-12 h-12 rounded-lg bg-zinc-100 border border-zinc-200 overflow-hidden shrink-0 cursor-pointer group-hover:border-black transition-colors"
-                          title="Click to view 7-photo gallery"
+                          onClick={() => openGalleryModal(item, 0)}
+                          className="relative w-14 h-14 rounded-2xl border border-[#E2DACF] bg-[#F4EFE6] overflow-hidden shrink-0 cursor-pointer group/thumb shadow-2xs hover:border-[#C5A880] transition-colors"
+                          title="Click to view 8-image photo gallery"
                         >
-                          {primaryImage ? (
+                          {heroPhoto ? (
                             <img
-                              src={
-                                typeof primaryImage === "string"
-                                  ? primaryImage
-                                  : primaryImage.url || URL.createObjectURL(primaryImage)
-                              }
+                              src={heroPhoto}
                               alt={item.name}
-                              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                if (e.currentTarget.parentElement) {
-                                  e.currentTarget.parentElement.classList.add('bg-zinc-100');
-                                }
-                              }}
+                              className="w-full h-full object-cover transition-transform duration-200 group-hover/thumb:scale-110"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                              <Images className="w-4 h-4" />
+                            <div className="w-full h-full flex items-center justify-center text-[#A59E92]">
+                              <Images className="w-5 h-5" />
                             </div>
                           )}
 
-                          {/* Image count pill */}
-                          <span className="absolute bottom-0.5 right-0.5 bg-black/75 text-white text-[9px] font-mono px-1 rounded font-bold">
-                            {validPhotosCount}/7
-                          </span>
+                          {/* Hover Overlay */}
+                          <div className="absolute inset-0 bg-[#1A1A1A]/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white">
+                            <Eye className="w-4 h-4 text-[#C5A880]" />
+                          </div>
+
+                          {/* Photos Count Badge */}
+                          <div className="absolute bottom-1 right-1 bg-[#1A1A1A]/80 text-[#F9F8F6] text-[9px] font-mono px-1 rounded-md backdrop-blur-xs font-semibold">
+                            {photoCount}/8
+                          </div>
                         </div>
 
-                        {/* Text info */}
-                        <div className="min-w-0">
-                          <div className="font-semibold text-zinc-950 text-xs truncate">
+                        {/* Title, SKU & Description */}
+                        <div className="min-w-0 max-w-sm">
+                          <span className="font-semibold text-[#1A1A1A] block hover:text-[#7A613E] transition-colors leading-snug">
                             {item.name}
-                          </div>
-                          <div className="text-[11px] font-mono text-zinc-500 mt-0.5 flex items-center gap-2">
-                            <span>{item.sku}</span>
-                            {item.price && (
-                              <span className="text-zinc-400">
-                                • ₹{Number(item.price).toLocaleString("en-IN")}/unit
-                              </span>
-                            )}
-                          </div>
+                          </span>
+                          <span className="font-mono text-[11px] text-[#888888] block mt-0.5">
+                            SKU: {item.sku || "VBF-LUX-00"}
+                          </span>
+                          {item.description && (
+                            <p className="text-[11px] text-[#666666] line-clamp-1 mt-0.5">
+                              {item.description}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
 
                     {/* Category */}
-                    <td className="py-3.5 px-4 sm:px-6 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <span className="inline-flex items-center text-[11px] font-medium text-[#7A613E] bg-[#F4EFE6] px-3 py-1 rounded-full border border-[#E2DACF]">
                         {item.category}
                       </span>
                     </td>
 
-                    {/* Stock Quantity */}
-                    <td className="py-3.5 px-4 sm:px-6 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-semibold text-zinc-950 text-sm">
-                          {item.stock}
+                    {/* Price in INR (₹) */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <div className="flex items-baseline gap-1">
+                        <span className="font-serif font-bold text-sm text-[#1A1A1A]">
+                          ₹{(item.price || 0).toLocaleString()}
                         </span>
-                        {isOutOfStock ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
-                            <XCircle className="w-3 h-3" />
-                            Out of Stock
-                          </span>
-                        ) : isLowStock ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                            <AlertCircle className="w-3 h-3" />
-                            Low ({item.stock} left)
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-600 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            In Stock
-                          </span>
-                        )}
                       </div>
-                    </td>
-
-                    {/* Storage Location */}
-                    <td className="py-3.5 px-4 sm:px-6 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 text-zinc-700">
-                        <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                        <span className="font-mono text-xs">{item.location}</span>
-                      </div>
-                    </td>
-
-                    {/* Space Required */}
-                    <td className="py-3.5 px-4 sm:px-6 whitespace-nowrap hidden md:table-cell">
-                      <span className="font-mono text-xs text-zinc-600">
-                        {item.spaceRequired} Units
+                      <span className="text-[10px] text-[#888888] font-mono block">
+                        Direct Atelier
                       </span>
                     </td>
 
-                    {/* Actions Column: Edit / Delete */}
-                    <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
+                    {/* Stock Status Badge */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium font-mono border ${
+                            isLow
+                              ? "bg-amber-50 text-amber-800 border-amber-200"
+                              : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isLow ? "bg-amber-600 animate-pulse" : "bg-emerald-600"
+                            }`}
+                          />
+                          {item.stock} in reserve
+                        </span>
+                      </div>
+                      {isLow && (
+                        <span className="text-[10.5px] text-amber-700 block mt-0.5 font-medium">
+                          Reserve below threshold ({item.minStock || 15})
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Location */}
+                    <td className="py-4 px-4 whitespace-nowrap hidden md:table-cell text-[#666666]">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-[#C5A880] shrink-0" />
+                        <span className="text-xs truncate max-w-[150px]">
+                          {item.location || "Gallery Wing"}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Actions: Edit & Delete */}
+                    <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5">
+                        {/* Edit Button */}
                         <button
                           onClick={() => onEditItem(item)}
-                          className="p-1.5 text-zinc-500 hover:text-black hover:bg-zinc-100 rounded-md transition-colors"
-                          title={`Edit ${item.name}`}
+                          className="p-2 text-[#555555] hover:text-[#1A1A1A] hover:bg-[#F4EFE6] rounded-2xl border border-transparent hover:border-[#E8E2D9] transition-all"
+                          title="Edit piece specifications & 8-image gallery"
                           aria-label={`Edit ${item.name}`}
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
 
+                        {/* Delete Button */}
                         <button
-                          onClick={() => onDeleteItem(item.id, item.name)}
-                          className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                          title={`Delete ${item.name}`}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Are you sure you want to remove "${item.name}" from the luxury catalog?`
+                              )
+                            ) {
+                              onDeleteItem(item.id, item.name);
+                            }
+                          }}
+                          className="p-2 text-[#888888] hover:text-red-600 hover:bg-red-50 rounded-2xl border border-transparent hover:border-red-200 transition-all"
+                          title="Remove item"
                           aria-label={`Delete ${item.name}`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -448,108 +468,104 @@ export default function InventoryTable({
         </table>
       </div>
 
-      {/* Table Footer */}
-      <div className="px-4 py-3 border-t border-zinc-200 bg-zinc-50/50 flex items-center justify-between text-xs text-zinc-500">
-        <span>Firestore & Storage Service active</span>
-        <span className="font-mono text-[11px]">
-          FORGE Logistics Database • Live
-        </span>
-      </div>
-
-      {/* ========================================================= */}
-      {/* QUICK 7-IMAGE GALLERY LIGHTBOX PREVIEW MODAL              */}
-      {/* ========================================================= */}
+      {/* ========================================================================= */}
+      {/* 8-IMAGE GALLERY LIGHTBOX MODAL (Curvy rounded-3xl Luxury Viewer)          */}
+      {/* ========================================================================= */}
       {galleryModalItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-modal-in">
-          <div className="relative w-full max-w-2xl bg-white rounded-2xl border border-zinc-200 shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="p-4 border-b border-zinc-200 flex items-center justify-between bg-zinc-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div
+            className="fixed inset-0 bg-[#1A1A1A]/85 backdrop-blur-md transition-opacity"
+            onClick={closeGalleryModal}
+          />
+          <div className="relative w-full max-w-3xl bg-[#F9F8F6] rounded-3xl border border-[#E8E2D9] shadow-2xl overflow-hidden z-10 animate-modal-in flex flex-col">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[#E8E2D9] flex items-center justify-between bg-white">
               <div>
-                <h4 className="text-sm font-bold text-zinc-950">
+                <h3 className="font-serif font-bold text-base sm:text-lg text-[#1A1A1A]">
                   {galleryModalItem.name}
-                </h4>
-                <p className="text-[11px] font-mono text-zinc-500">
-                  {galleryModalItem.sku} • 7-Slot Catalog Gallery
+                </h3>
+                <p className="text-xs text-[#666666] flex items-center gap-2 mt-0.5">
+                  <span className="font-mono text-[#7A613E]">SKU: {galleryModalItem.sku}</span>
+                  <span>•</span>
+                  <span>Photo {activeGalleryIndex + 1} of 8</span>
                 </p>
               </div>
               <button
-                onClick={() => setGalleryModalItem(null)}
-                className="p-1 text-zinc-400 hover:text-black rounded-lg transition-colors"
+                onClick={closeGalleryModal}
+                className="p-2 rounded-2xl text-[#888888] hover:text-[#1A1A1A] hover:bg-[#F4EFE6] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Main Stage View */}
-            <div className="relative h-72 sm:h-80 bg-zinc-950 flex items-center justify-center overflow-hidden">
+            {/* Main Active Viewer */}
+            <div className="relative w-full h-80 sm:h-96 bg-[#1A1A1A] flex items-center justify-center overflow-hidden">
               {galleryModalItem.images?.[activeGalleryIndex] ? (
                 <img
-                  src={
-                    typeof galleryModalItem.images[activeGalleryIndex] === "string"
-                      ? galleryModalItem.images[activeGalleryIndex]
-                      : URL.createObjectURL(galleryModalItem.images[activeGalleryIndex])
-                  }
-                  alt={`Slot ${activeGalleryIndex + 1}`}
+                  src={galleryModalItem.images[activeGalleryIndex]}
+                  alt={`Photo ${activeGalleryIndex + 1}`}
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <div className="text-zinc-500 text-xs font-mono text-center">
-                  Slot #{activeGalleryIndex + 1} is empty
+                <div className="text-center text-[#888888] p-6">
+                  <Images className="w-10 h-10 mx-auto mb-2 text-[#555555]" />
+                  <p className="text-xs">No image provided for slot #{activeGalleryIndex + 1}</p>
                 </div>
               )}
 
-              {/* Prev / Next controls */}
+              {/* Navigation Arrows */}
               <button
                 onClick={() =>
-                  setActiveGalleryIndex((prev) => (prev > 0 ? prev - 1 : 6))
+                  setActiveGalleryIndex((prev) => (prev > 0 ? prev - 1 : 7))
                 }
-                className="absolute left-3 p-1.5 rounded-full bg-black/50 text-white hover:bg-black transition-colors"
+                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#1A1A1A]/70 hover:bg-[#1A1A1A] text-white border border-[#C5A880]/30 transition-colors"
+                aria-label="Previous image"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={() =>
-                  setActiveGalleryIndex((prev) => (prev < 6 ? prev + 1 : 0))
+                  setActiveGalleryIndex((prev) => (prev < 7 ? prev + 1 : 0))
                 }
-                className="absolute right-3 p-1.5 rounded-full bg-black/50 text-white hover:bg-black transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#1A1A1A]/70 hover:bg-[#1A1A1A] text-white border border-[#C5A880]/30 transition-colors"
+                aria-label="Next image"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
 
-            {/* 7 Thumbnail Strip */}
-            <div className="p-3 bg-zinc-50 border-t border-zinc-200 flex items-center gap-2 overflow-x-auto">
-              {[0, 1, 2, 3, 4, 5, 6].map((idx) => {
-                const img = galleryModalItem.images?.[idx];
-                const isActive = activeGalleryIndex === idx;
+            {/* 8 Thumbnail Bar */}
+            <div className="p-4 bg-white border-t border-[#E8E2D9] overflow-x-auto">
+              <div className="flex items-center gap-2.5 justify-center">
+                {Array.from({ length: 8 }).map((_, idx) => {
+                  const thumb = galleryModalItem.images?.[idx];
+                  const isActive = activeGalleryIndex === idx;
 
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveGalleryIndex(idx)}
-                    className={`relative w-14 h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
-                      isActive
-                        ? "border-black scale-105 shadow-xs"
-                        : "border-zinc-200 opacity-60 hover:opacity-100"
-                    }`}
-                  >
-                    {img ? (
-                      <img
-                        src={typeof img === "string" ? img : URL.createObjectURL(img)}
-                        alt={`Thumb ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-zinc-200 flex items-center justify-center font-mono text-[10px] text-zinc-500">
-                        #{idx + 1}
-                      </div>
-                    )}
-                    <span className="absolute bottom-0 right-0 bg-black/80 text-white text-[8px] font-mono px-1">
-                      {idx + 1}
-                    </span>
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveGalleryIndex(idx)}
+                      className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
+                        isActive
+                          ? "border-[#C5A880] ring-2 ring-[#C5A880]/30 scale-105"
+                          : "border-[#E8E2D9] opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      {thumb ? (
+                        <img
+                          src={thumb}
+                          alt={`Slot ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#F4EFE6] flex items-center justify-center text-[10px] font-mono text-[#888888]">
+                          #{idx + 1}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

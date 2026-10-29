@@ -1,10 +1,9 @@
 /**
- * Inventory Service Layer for Furniture Hardware Business
+ * Inventory Service Layer for VibeFab Luxury Admin
  * 
  * Provides production-ready Firebase Firestore & Firebase Storage integration.
- * If Firebase is configured with real credentials in .env.local, it uses live Firestore
- * collections ("hardware_inventory") and Firebase Storage ("hardware_images/").
- * Otherwise, it uses persistent local storage with Base64 persistent images.
+ * Connects to the "inventoryItems" collection in Firestore and "inventory_images/" in Storage.
+ * When Firebase credentials are not yet linked, seamlessly maintains state with persistent local storage.
  */
 
 import {
@@ -22,8 +21,8 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, isFirebaseConfigured } from "@/lib/firebase";
 import { INITIAL_ITEMS } from "@/data/mockHardwareData";
 
-const COLLECTION_NAME = "hardware_inventory";
-export const STORAGE_KEY = "forge_hardware_inventory_final_v1";
+const COLLECTION_NAME = "inventoryItems";
+export const STORAGE_KEY = "vibefab_luxury_inventory_items_v2";
 
 // Helper: Convert File object to persistent Base64 Data URL so images don't break on refresh
 export function fileToBase64(file) {
@@ -40,7 +39,7 @@ export function fileToBase64(file) {
 }
 
 /**
- * Fetch all inventory items (mirrors getDocs)
+ * Fetch all inventory items (mirrors getDocs from "inventoryItems" collection)
  */
 export async function fetchInventoryItems() {
   if (isFirebaseConfigured && db) {
@@ -79,12 +78,12 @@ export async function fetchInventoryItems() {
 }
 
 /**
- * Process exactly 7 image slots (Firebase Storage upload or persistent Base64 data)
+ * Process exactly 8 image slots (Firebase Storage upload or persistent Base64 data)
  */
 export async function processItemImages(itemId, imageSlots = []) {
   const processed = [];
 
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 8; i++) {
     const item = imageSlots[i];
     if (!item) {
       processed.push(null);
@@ -100,7 +99,7 @@ export async function processItemImages(itemId, imageSlots = []) {
     // If File object and real Firebase is configured
     if (item instanceof File && isFirebaseConfigured && storage) {
       try {
-        const storageRef = ref(storage, `hardware_images/${itemId}/slot_${i + 1}_${Date.now()}`);
+        const storageRef = ref(storage, `inventory_images/${itemId}/slot_${i + 1}_${Date.now()}`);
         const snapshot = await uploadBytes(storageRef, item);
         const downloadUrl = await getDownloadURL(snapshot.ref);
         processed.push(downloadUrl);
@@ -127,10 +126,10 @@ export async function processItemImages(itemId, imageSlots = []) {
 }
 
 /**
- * Add a new hardware item (mirrors addDoc)
+ * Add a new luxury inventory item (mirrors addDoc to "inventoryItems")
  */
 export async function createInventoryItem(itemData, rawImageSlots = []) {
-  const tempId = `hw-${Date.now()}`;
+  const tempId = `vbf-${Date.now()}`;
   const images = await processItemImages(tempId, rawImageSlots);
 
   const payload = {
@@ -149,57 +148,54 @@ export async function createInventoryItem(itemData, rawImageSlots = []) {
       });
       return { id: docRef.id, ...payload };
     } catch (error) {
-      console.warn("Firestore addDoc failed, using local fallback:", error);
+      console.warn("Firestore addDoc error, saving locally:", error);
     }
   }
 
+  // Return new item with generated ID
   return { id: tempId, ...payload };
 }
 
 /**
- * Update an existing hardware item (mirrors updateDoc)
+ * Update an existing luxury inventory item (mirrors updateDoc in "inventoryItems")
  */
-export async function updateInventoryItem(id, itemData, rawImageSlots = null) {
-  let images = undefined;
-  if (rawImageSlots && Array.isArray(rawImageSlots)) {
-    images = await processItemImages(id, rawImageSlots);
-  }
+export async function updateInventoryItem(itemId, itemData, rawImageSlots = []) {
+  const images = await processItemImages(itemId, rawImageSlots);
 
   const payload = {
     ...itemData,
-    ...(images ? { images } : {}),
+    images,
     updatedAt: new Date().toISOString(),
   };
 
   if (isFirebaseConfigured && db) {
     try {
-      const docRef = doc(db, COLLECTION_NAME, id);
-      await updateDoc(docRef, {
+      const itemRef = doc(db, COLLECTION_NAME, itemId);
+      await updateDoc(itemRef, {
         ...payload,
         updatedAt: serverTimestamp(),
       });
-      return { id, ...payload };
+      return { id: itemId, ...payload };
     } catch (error) {
-      console.warn("Firestore updateDoc failed, using local fallback:", error);
+      console.warn("Firestore updateDoc error, saving locally:", error);
     }
   }
 
-  return { id, ...payload };
+  return { id: itemId, ...payload };
 }
 
 /**
- * Delete a hardware item (mirrors deleteDoc)
+ * Delete an inventory item (mirrors deleteDoc in "inventoryItems")
  */
-export async function deleteInventoryItem(id) {
+export async function deleteInventoryItem(itemId) {
   if (isFirebaseConfigured && db) {
     try {
-      const docRef = doc(db, COLLECTION_NAME, id);
-      await deleteDoc(docRef);
-      return { success: true, id };
+      const itemRef = doc(db, COLLECTION_NAME, itemId);
+      await deleteDoc(itemRef);
+      return true;
     } catch (error) {
-      console.warn("Firestore deleteDoc failed, using local fallback:", error);
+      console.warn("Firestore deleteDoc error:", error);
     }
   }
-
-  return { success: true, id };
+  return true;
 }

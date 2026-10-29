@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
-export default function Toast({ toast, onClose, onUndo }) {
+export default function Toast({ toast, onClose }) {
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => {
@@ -14,48 +14,55 @@ export default function Toast({ toast, onClose, onUndo }) {
 
   if (!toast) return null;
 
+  const isSuccess = toast.type === "success";
+  const isError = toast.type === "error";
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-modal-in max-w-sm w-full">
-      <div className="bg-black text-white px-4 py-3 rounded-xl shadow-2xl border border-zinc-800 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          {toast.type === "error" ? (
-            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+    <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-modal-in">
+      <div className="bg-[#1A1A1A] text-[#F9F8F6] p-4 rounded-3xl border border-[#C5A880]/30 shadow-2xl flex items-start gap-3">
+        <div className="shrink-0 mt-0.5">
+          {isSuccess ? (
+            <div className="w-7 h-7 rounded-full bg-[#C5A880]/20 flex items-center justify-center text-[#C5A880]">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          ) : isError ? (
+            <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center text-red-400">
+              <AlertCircle className="w-4 h-4" />
+            </div>
           ) : (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="w-7 h-7 rounded-full bg-[#C5A880]/20 flex items-center justify-center text-[#C5A880]">
+              <Info className="w-4 h-4" />
+            </div>
           )}
-          <div className="min-w-0">
-            <p className="text-xs font-semibold leading-tight text-white truncate">
-              {toast.title}
-            </p>
-            {toast.message && (
-              <p className="text-[11px] text-zinc-400 leading-tight truncate mt-0.5">
-                {toast.message}
-              </p>
-            )}
-          </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-serif font-bold text-[#F9F8F6]">
+            {toast.title}
+          </p>
+          <p className="text-[11px] text-[#A59E92] mt-0.5 leading-relaxed">
+            {toast.message}
+          </p>
           {toast.undoAction && (
             <button
               onClick={() => {
                 toast.undoAction();
                 onClose();
               }}
-              className="text-xs font-semibold text-zinc-300 hover:text-white underline underline-offset-2"
+              className="mt-2 text-[11px] font-semibold text-[#C5A880] hover:underline block"
             >
-              Undo
+              Undo Action
             </button>
           )}
-          <button
-            onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-white rounded-md transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
         </div>
+
+        <button
+          onClick={onClose}
+          className="text-[#888888] hover:text-white p-1 rounded-xl transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
 }
-

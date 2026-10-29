@@ -7,8 +7,7 @@ import {
   Layers,
   Warehouse,
   TrendingUp,
-  ArrowUpRight,
-  AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
 export default function MetricCards({ items = [], totalCapacity = 600, totalOrders = 1245 }) {
@@ -25,129 +24,123 @@ export default function MetricCards({ items = [], totalCapacity = 600, totalOrde
     Math.round((totalSpaceUsed / totalCapacity) * 100)
   );
 
-  const lowStockCount = items.filter((item) => Number(item.stock) <= Number(item.minStock || 0)).length;
+  const lowStockCount = items.filter((item) => Number(item.stock) <= Number(item.minStock || 15)).length;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
       {/* 1. Total Orders */}
-      <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs hover:border-zinc-300 transition-all duration-150">
+      <div className="bg-white rounded-3xl border border-[#E8E2D9] p-6 shadow-sm hover:border-[#C5A880]/60 hover:shadow-md transition-all duration-200">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
             Total Orders
           </span>
-          <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-800">
+          <div className="w-10 h-10 rounded-2xl bg-[#F4EFE6] flex items-center justify-center text-[#7A613E] border border-[#E2DACF]">
             <ShoppingCart className="w-4 h-4" />
           </div>
         </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl font-bold tracking-tight text-zinc-950 font-mono">
+        <div className="mt-4 flex items-baseline gap-2.5">
+          <span className="text-3xl font-serif font-bold tracking-tight text-[#1A1A1A]">
             {totalOrders.toLocaleString()}
           </span>
-          <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/50">
-            <TrendingUp className="w-3 h-3 mr-0.5" />
-            +12.4%
+          <span className="inline-flex items-center text-xs font-semibold text-[#7A613E] bg-[#F4EFE6] px-2 py-0.5 rounded-full border border-[#E2DACF]">
+            <TrendingUp className="w-3 h-3 mr-1" />
+            +18.4%
           </span>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-zinc-400">
-          <span>Monthly fulfilled volume</span>
-          <span className="font-mono text-zinc-600">32 pending</span>
+        <div className="mt-2.5 flex items-center justify-between text-xs text-[#888888]">
+          <span>Haute living fulfillment</span>
+          <span className="font-mono text-[#1A1A1A] font-semibold">14 pending</span>
         </div>
       </div>
 
       {/* 2. Total Items (Linked to state) */}
-      <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs hover:border-zinc-300 transition-all duration-150">
+      <div className="bg-white rounded-3xl border border-[#E8E2D9] p-6 shadow-sm hover:border-[#C5A880]/60 hover:shadow-md transition-all duration-200">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Total Items
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+            Total Luxury Pieces
           </span>
-          <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-800">
+          <div className="w-10 h-10 rounded-2xl bg-[#F4EFE6] flex items-center justify-center text-[#7A613E] border border-[#E2DACF]">
             <Package className="w-4 h-4" />
           </div>
         </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl font-bold tracking-tight text-zinc-950 font-mono">
+        <div className="mt-4 flex items-baseline gap-2.5">
+          <span className="text-3xl font-serif font-bold tracking-tight text-[#1A1A1A]">
             {totalItemCount}
           </span>
-          <span className="text-xs font-medium text-zinc-500">
-            SKU Variants
+          <span className="text-xs font-medium text-[#777777]">
+            Curated Lines
           </span>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-zinc-400">
-          <span>Active hardware catalog</span>
-          <span className="font-mono text-zinc-900 font-medium">100% Active</span>
+        <div className="mt-2.5 flex items-center justify-between text-xs text-[#888888]">
+          <span>Active collection items</span>
+          <span className="font-mono text-[#7A613E] font-semibold">100% Verified</span>
         </div>
       </div>
 
       {/* 3. Current Stock Levels (Linked to state) */}
-      <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs hover:border-zinc-300 transition-all duration-150">
+      <div className="bg-white rounded-3xl border border-[#E8E2D9] p-6 shadow-sm hover:border-[#C5A880]/60 hover:shadow-md transition-all duration-200">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Current Stock Levels
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+            Current Atelier Stock
           </span>
-          <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-800">
+          <div className="w-10 h-10 rounded-2xl bg-[#F4EFE6] flex items-center justify-center text-[#7A613E] border border-[#E2DACF]">
             <Layers className="w-4 h-4" />
           </div>
         </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl font-bold tracking-tight text-zinc-950 font-mono">
+        <div className="mt-4 flex items-baseline gap-2.5">
+          <span className="text-3xl font-serif font-bold tracking-tight text-[#1A1A1A]">
             {currentTotalStock.toLocaleString()}
           </span>
-          <span className="text-xs font-medium text-zinc-500">Units in Bin</span>
+          <span className="text-xs font-medium text-[#777777]">Units In Vault</span>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-zinc-400">
-          <span>Warehouse bin counts</span>
+        <div className="mt-2.5 flex items-center justify-between text-xs text-[#888888]">
+          <span>Reserve balance</span>
           {lowStockCount > 0 ? (
-            <span className="inline-flex items-center font-mono text-amber-700 font-medium bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50">
-              <AlertCircle className="w-3 h-3 mr-1" />
-              {lowStockCount} low
+            <span className="inline-flex items-center font-mono text-amber-800 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              {lowStockCount} below reserve
             </span>
           ) : (
-            <span className="font-mono text-zinc-600">All stocked</span>
+            <span className="font-mono text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Optimal Reserves
+            </span>
           )}
         </div>
       </div>
 
-      {/* 4. Storage Space Capacity (Progress bar showing warehouse space) */}
-      <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs hover:border-zinc-300 transition-all duration-150">
+      {/* 4. Storage Space Progress Bar (Linked to state) */}
+      <div className="bg-white rounded-3xl border border-[#E8E2D9] p-6 shadow-sm hover:border-[#C5A880]/60 hover:shadow-md transition-all duration-200">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Storage Space Capacity
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+            Storage Vault Capacity
           </span>
-          <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-800">
+          <div className="w-10 h-10 rounded-2xl bg-[#F4EFE6] flex items-center justify-center text-[#7A613E] border border-[#E2DACF]">
             <Warehouse className="w-4 h-4" />
           </div>
         </div>
-        <div className="mt-3 flex items-baseline justify-between">
-          <span className="text-2xl font-bold tracking-tight text-zinc-950 font-mono">
+        <div className="mt-4 flex items-baseline gap-2.5">
+          <span className="text-3xl font-serif font-bold tracking-tight text-[#1A1A1A]">
             {spaceUsedPercentage}%
           </span>
-          <span className="text-xs font-mono text-zinc-500">
-            {totalSpaceUsed} / {totalCapacity} Units
+          <span className="text-xs font-medium text-[#777777]">
+            ({totalSpaceUsed} / {totalCapacity})
           </span>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mt-3 w-full bg-zinc-100 h-2 rounded-full overflow-hidden border border-zinc-200/60">
+        {/* Muted Royal Gold Luxury Progress Bar */}
+        <div className="mt-3 w-full bg-[#EFEAE2] h-2.5 rounded-full overflow-hidden p-0.5">
           <div
-            className={`h-full transition-all duration-500 ease-out ${
-              spaceUsedPercentage >= 90
-                ? "bg-red-600"
-                : spaceUsedPercentage >= 75
-                ? "bg-zinc-900"
-                : "bg-zinc-800"
-            }`}
+            className="h-full rounded-full bg-gradient-to-r from-[#C5A880] to-[#9E825C] transition-all duration-500 ease-out"
             style={{ width: `${spaceUsedPercentage}%` }}
           />
         </div>
 
-        <div className="mt-2 flex items-center justify-between text-xs text-zinc-400">
-          <span>Space Used</span>
-          <span className="font-mono text-zinc-600">
-            {Math.max(0, totalCapacity - totalSpaceUsed)} free
+        <div className="mt-2 flex items-center justify-between text-xs text-[#888888]">
+          <span>Total vault capacity</span>
+          <span className="font-mono text-[#1A1A1A] font-semibold">
+            {Math.max(0, totalCapacity - totalSpaceUsed)} units free
           </span>
         </div>
       </div>
     </div>
   );
 }
-

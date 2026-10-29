@@ -9,6 +9,7 @@ import {
   XCircle,
   Search,
   Filter,
+  Sparkles,
 } from "lucide-react";
 import { INITIAL_ORDERS } from "@/data/mockHardwareData";
 
@@ -32,24 +33,24 @@ export default function OrdersView() {
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-zinc-950">
-            Hardware Dispatch & Orders
+          <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-[#1A1A1A]">
+            Bespoke Orders & Dispatch
           </h2>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Real-time trade fulfillment and batch delivery management.
+          <p className="text-xs text-[#666666] mt-1">
+            Real-time VIP client fulfillment and white-glove delivery tracking.
           </p>
         </div>
 
         {/* Filter Pills */}
-        <div className="inline-flex rounded-lg border border-zinc-200 bg-white p-0.5">
+        <div className="inline-flex rounded-2xl border border-[#E8E2D9] bg-white p-1 shadow-2xs">
           {["all", "Processing", "Shipped", "Delivered"].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 text-xs rounded-md font-medium transition-colors ${
+              className={`px-3.5 py-1.5 text-xs rounded-xl font-medium transition-all ${
                 statusFilter.toLowerCase() === st.toLowerCase()
-                  ? "bg-black text-white"
-                  : "text-zinc-600 hover:text-black"
+                  ? "bg-[#1A1A1A] text-[#F9F8F6] shadow-xs"
+                  : "text-[#666666] hover:text-[#1A1A1A]"
               }`}
             >
               {st === "all" ? "All Orders" : st}
@@ -58,68 +59,89 @@ export default function OrdersView() {
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
+      {/* Orders Table Card */}
+      <div className="bg-white rounded-3xl border border-[#E8E2D9] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-zinc-200 bg-zinc-50/70 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-                <th className="py-3 px-4 sm:px-6">Order ID</th>
-                <th className="py-3 px-4 sm:px-6">Customer / Studio</th>
-                <th className="py-3 px-4 sm:px-6">Items Count</th>
-                <th className="py-3 px-4 sm:px-6">Total Value</th>
-                <th className="py-3 px-4 sm:px-6">Order Date</th>
-                <th className="py-3 px-4 sm:px-6">Status</th>
-                <th className="py-3 px-4 sm:px-6 text-right">Quick Action</th>
+              <tr className="border-b border-[#E8E2D9] bg-[#FAF8F5] text-[11px] font-bold text-[#555555] uppercase tracking-wider">
+                <th className="py-4 px-6">Order ID</th>
+                <th className="py-4 px-6">VIP Client & Residence</th>
+                <th className="py-4 px-4">Pieces</th>
+                <th className="py-4 px-4">Amount (INR)</th>
+                <th className="py-4 px-4">Fulfillment Status</th>
+                <th className="py-4 px-6 text-right">Dispatch Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 text-xs text-zinc-800">
-              {filteredOrders.map((ord) => (
-                <tr key={ord.id} className="hover:bg-zinc-50 transition-colors">
-                  <td className="py-3.5 px-4 sm:px-6 font-mono font-semibold text-zinc-900">
-                    {ord.id}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 font-medium text-zinc-900">
-                    {ord.customer}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 font-mono text-zinc-600">
-                    {ord.itemsCount} hardware units
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 font-mono font-medium text-zinc-950">
-                    ₹{Number(ord.amount).toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 font-mono text-zinc-500">
-                    {ord.date}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${
-                        ord.status === "Delivered"
-                          ? "bg-zinc-100 text-zinc-800 border-zinc-300"
-                          : ord.status === "Shipped"
-                          ? "bg-zinc-900 text-white border-zinc-900"
-                          : ord.status === "Processing"
-                          ? "bg-zinc-100 text-zinc-700 border-zinc-200"
-                          : "bg-red-50 text-red-700 border-red-200"
-                      }`}
-                    >
-                      {ord.status}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-right">
-                    <select
-                      value={ord.status}
-                      onChange={(e) => updateOrderStatus(ord.id, e.target.value)}
-                      className="text-xs bg-white text-zinc-800 border border-zinc-200 rounded px-2 py-1 outline-hidden focus:border-black"
-                    >
-                      <option value="Processing">Processing</option>
-                      <option value="Shipped">Shipped</option>
-                      <option value="Delivered">Delivered</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-[#EFEAE2] text-xs">
+              {filteredOrders.map((ord) => {
+                const isDelivered = ord.status === "Delivered";
+                const isShipped = ord.status === "Shipped";
+                const isProcessing = ord.status === "Processing";
+
+                return (
+                  <tr
+                    key={ord.id}
+                    className="hover:bg-[#FAF8F5]/90 transition-colors duration-150"
+                  >
+                    <td className="py-4 px-6 font-mono font-bold text-[#1A1A1A]">
+                      {ord.id}
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="font-semibold text-[#1A1A1A]">
+                        {ord.customer}
+                      </div>
+                      <div className="text-[11px] text-[#888888]">
+                        Placed on {ord.date}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 font-mono text-[#555555]">
+                      {ord.itemsCount} curated units
+                    </td>
+                    <td className="py-4 px-4 font-serif font-bold text-sm text-[#1A1A1A]">
+                      ₹{ord.amount.toLocaleString()}
+                    </td>
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
+                          isDelivered
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            : isShipped
+                            ? "bg-[#F4EFE6] text-[#7A613E] border-[#E2DACF]"
+                            : isProcessing
+                            ? "bg-amber-50 text-amber-800 border-amber-200"
+                            : "bg-zinc-100 text-zinc-800 border-zinc-200"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isDelivered
+                              ? "bg-emerald-600"
+                              : isShipped
+                              ? "bg-[#C5A880]"
+                              : isProcessing
+                              ? "bg-amber-600 animate-pulse"
+                              : "bg-zinc-500"
+                          }`}
+                        />
+                        {ord.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-right whitespace-nowrap">
+                      <select
+                        value={ord.status}
+                        onChange={(e) => updateOrderStatus(ord.id, e.target.value)}
+                        className="text-xs bg-white text-[#1A1A1A] border border-[#E8E2D9] rounded-2xl px-3 py-1.5 focus:border-[#C5A880] outline-hidden cursor-pointer"
+                      >
+                        <option value="Processing">Mark Processing</option>
+                        <option value="Shipped">Mark Shipped</option>
+                        <option value="Delivered">Mark Delivered</option>
+                        <option value="Cancelled">Cancel Order</option>
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -127,4 +149,3 @@ export default function OrdersView() {
     </div>
   );
 }
-

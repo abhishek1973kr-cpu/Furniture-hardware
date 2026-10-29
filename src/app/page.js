@@ -62,7 +62,7 @@ export default function DashboardPage() {
     loadData();
 
     try {
-      const savedCap = localStorage.getItem("forge_warehouse_capacity");
+      const savedCap = localStorage.getItem("vibefab_vault_capacity");
       if (savedCap) setTotalCapacity(Number(savedCap) || WAREHOUSE_TOTAL_CAPACITY);
     } catch (e) {
       console.error(e);
@@ -107,17 +107,17 @@ export default function DashboardPage() {
           prev.map((i) => (i.id === editingItem.id ? { ...i, ...updated } : i))
         );
         setToast({
-          title: "Hardware Item Updated",
+          title: "Luxury Piece Updated",
           message: `"${itemData.name}" has been updated. Stock & space metrics recalculated.`,
           type: "success",
         });
       } else {
-        // Create new item with processed 7-image gallery
+        // Create new item with processed 8-image gallery
         const created = await createInventoryItem(itemData, imageSlots);
         setItems((prev) => [created, ...prev]);
         setToast({
-          title: "New Hardware Item Added",
-          message: `"${itemData.name}" with 7-image gallery saved. Top metrics updated.`,
+          title: "New Luxury Piece Added",
+          message: `"${itemData.name}" with 8-image gallery saved to inventoryItems.`,
           type: "success",
         });
       }
@@ -143,8 +143,8 @@ export default function DashboardPage() {
     try {
       await deleteInventoryItem(itemId);
       setToast({
-        title: "Item Deleted",
-        message: `"${itemName}" removed from inventory immediately.`,
+        title: "Piece Removed",
+        message: `"${itemName}" removed from luxury catalog immediately.`,
         type: "info",
         undoAction: async () => {
           if (itemToDelete) {
@@ -167,8 +167,8 @@ export default function DashboardPage() {
     }
     setItems(INITIAL_ITEMS);
     setToast({
-      title: "Inventory Reset",
-      message: "Reset to default sample hardware items with 7-image slots.",
+      title: "Catalog Reset",
+      message: "Reset to default luxury catalog pieces with 8-image slots.",
       type: "info",
     });
   };
@@ -176,12 +176,12 @@ export default function DashboardPage() {
   // ROUTE PROTECTION: Show loading until auth state is determined
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center selection:bg-black selection:text-white">
+      <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center selection:bg-[#1A1A1A] selection:text-[#F9F8F6]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-bold text-sm tracking-wider shadow-sm animate-pulse">
-            FH
+          <div className="w-12 h-12 rounded-2xl bg-[#1A1A1A] text-[#C5A880] flex items-center justify-center font-serif font-bold text-base tracking-wider shadow-md animate-pulse">
+            VL
           </div>
-          <div className="w-5 h-5 border-2 border-zinc-200 border-t-black rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-[#E8E2D9] border-t-[#C5A880] rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -194,7 +194,7 @@ export default function DashboardPage() {
 
   // AUTHENTICATED: Render Protected Admin Dashboard
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="min-h-screen bg-[#F9F8F6] flex">
       {/* 1. Left Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -216,25 +216,25 @@ export default function DashboardPage() {
         />
 
         {/* Main Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-7">
           {/* Tab 1: Dashboard (Primary View) */}
           {activeTab === "dashboard" && (
             <>
               {/* Page Title & Status Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-950">
-                    Warehouse Overview
+                  <h1 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-[#1A1A1A]">
+                    Atelier Overview & Analytics
                   </h1>
-                  <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
-                    Live operational metrics for furniture hinges, drawer slides, knobs, and fasteners.
+                  <p className="text-xs sm:text-sm text-[#666666] mt-1">
+                    Live operational metrics for Smart Living, On-The-Go Comfort, Flexi Work & Dine, and Storage & Utility.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-xs text-zinc-700 bg-zinc-50 px-3 py-1.5 rounded-lg border border-zinc-200 shadow-xs">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="inline-flex items-center gap-1.5 text-xs text-[#7A613E] bg-[#F4EFE6] px-3.5 py-1.5 rounded-full border border-[#E2DACF] shadow-2xs">
+                    <span className="w-2 h-2 rounded-full bg-[#C5A880] animate-pulse" />
                     <span>
-                      {isFirebaseConfigured ? "Firebase Cloud Live" : "Local Database Synced"}
+                      {isFirebaseConfigured ? "Firebase Cloud Live" : "Local Luxury Storage Synced"}
                     </span>
                   </span>
                 </div>
@@ -265,14 +265,14 @@ export default function DashboardPage() {
 
           {/* Tab 2: Inventory Dedicated View */}
           {activeTab === "inventory" && (
-            <div className="space-y-6">
+            <div className="space-y-7">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-950">
-                    Full Inventory Management
+                  <h1 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-[#1A1A1A]">
+                    Luxury Collection Catalog
                   </h1>
-                  <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
-                    Browse, filter, edit, and organize all furniture hardware components and stock levels.
+                  <p className="text-xs sm:text-sm text-[#666666] mt-1">
+                    Browse, filter, edit, and curate all pieces with bespoke 8-image perspective galleries.
                   </p>
                 </div>
               </div>
@@ -316,7 +316,7 @@ export default function DashboardPage() {
         </main>
       </div>
 
-      {/* 5. Advanced Add / Edit Item Modal (With 7-Image Gallery Support) */}
+      {/* 5. Advanced Add / Edit Item Modal (With 8-Image Gallery Support) */}
       <ItemModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
