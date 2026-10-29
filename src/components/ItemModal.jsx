@@ -210,12 +210,10 @@ export default function ItemModal({
       errs.description = "Please provide at least 15 characters of description";
     }
 
-    // Price validation: strictly between ₹1500 - ₹2500
+    // Price validation: any valid non-negative price
     const priceNum = Number(formData.price);
-    if (formData.price === "" || isNaN(priceNum)) {
+    if (formData.price === "" || isNaN(priceNum) || priceNum < 0) {
       errs.price = "Enter a valid price";
-    } else if (priceNum < 1500 || priceNum > 2500) {
-      errs.price = "Price must be strictly between ₹1,500 and ₹2,500";
     }
 
     // Stock Quantity validation
@@ -576,14 +574,14 @@ export default function ItemModal({
 
                 {/* 4. Price & 5. Stock Quantity */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Price (must be between ₹1500 - ₹2500) */}
+                  {/* Price */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-semibold text-[#1A1A1A]">
                         Price (₹) <span className="text-red-500">*</span>
                       </label>
                       <span className="text-[10px] font-mono font-medium text-[#7A613E] bg-[#F4EFE6] px-1.5 py-0.5 rounded-md">
-                        ₹1500 – ₹2500
+                        INR (₹)
                       </span>
                     </div>
                     <div className="relative">
@@ -592,9 +590,8 @@ export default function ItemModal({
                       </span>
                       <input
                         type="number"
-                        min="1500"
-                        max="2500"
-                        step="10"
+                        min="0"
+                        step="any"
                         value={formData.price}
                         onChange={(e) =>
                           setFormData({ ...formData, price: e.target.value })
