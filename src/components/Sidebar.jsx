@@ -11,7 +11,7 @@ import {
   Sparkles,
   ChevronRight,
   ShieldCheck,
-  Gem,
+  BellRing,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -19,8 +19,9 @@ export default function Sidebar({
   setActiveTab,
   mobileOpen,
   setMobileOpen,
-  itemCount,
-  orderCount = 1245,
+  itemCount = 0,
+  pendingOrdersCount = 0,
+  totalOrdersCount = 0,
 }) {
   const navItems = [
     {
@@ -30,16 +31,18 @@ export default function Sidebar({
       badge: null,
     },
     {
+      id: "orders",
+      label: "Customer Orders",
+      icon: ShoppingCart,
+      badge: pendingOrdersCount > 0 ? `${pendingOrdersCount} Pending` : "Live",
+      isProminent: true,
+      hasPulse: pendingOrdersCount > 0,
+    },
+    {
       id: "inventory",
       label: "Inventory",
       icon: Boxes,
       badge: itemCount,
-    },
-    {
-      id: "orders",
-      label: "Orders",
-      icon: ShoppingCart,
-      badge: "5 New",
     },
     {
       id: "storage",
@@ -98,7 +101,7 @@ export default function Sidebar({
         {/* Navigation links */}
         <div className="flex-1 py-6 px-3.5 space-y-1.5 overflow-y-auto">
           <div className="px-3 pb-2 text-[10.5px] font-semibold tracking-widest text-[#888888] uppercase">
-            Management
+            Operations & Catalog
           </div>
 
           {navItems.map((item) => {
@@ -115,13 +118,19 @@ export default function Sidebar({
                 className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-medium transition-all duration-200 ${
                   isActive
                     ? "bg-[#C5A880] text-[#1A1A1A] font-semibold shadow-md"
+                    : item.isProminent && pendingOrdersCount > 0
+                    ? "bg-[#25221B] text-[#F9F8F6] hover:bg-[#2E2920] border border-[#C5A880]/30"
                     : "text-[#D8D2C8] hover:bg-[#262626] hover:text-[#F9F8F6]"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon
                     className={`w-4 h-4 transition-colors ${
-                      isActive ? "text-[#1A1A1A]" : "text-[#A59E92]"
+                      isActive
+                        ? "text-[#1A1A1A]"
+                        : item.isProminent
+                        ? "text-[#C5A880]"
+                        : "text-[#A59E92]"
                     }`}
                   />
                   <span className="tracking-wide">{item.label}</span>
@@ -129,12 +138,17 @@ export default function Sidebar({
 
                 {item.badge !== null && (
                   <span
-                    className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-full ${
+                    className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-full flex items-center gap-1.5 ${
                       isActive
                         ? "bg-[#1A1A1A] text-[#F9F8F6]"
+                        : item.isProminent && pendingOrdersCount > 0
+                        ? "bg-[#C5A880] text-[#1A1A1A] font-bold"
                         : "bg-[#2A2A2A] text-[#C5A880] border border-[#3A3A3A]"
                     }`}
                   >
+                    {item.hasPulse && !isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#1A1A1A] animate-ping" />
+                    )}
                     {item.badge}
                   </span>
                 )}
@@ -149,11 +163,11 @@ export default function Sidebar({
             <div className="flex items-center gap-2 mb-1.5">
               <span className="w-2 h-2 rounded-full bg-[#C5A880] animate-pulse" />
               <span className="font-semibold text-[11px] text-[#F9F8F6] uppercase tracking-wider">
-                Luxury Sync
+                Real-Time Orders
               </span>
             </div>
             <p className="text-[11px] text-[#A59E92] leading-relaxed">
-              Firestore collection: <strong className="text-[#C5A880]">inventoryItems</strong> with 8-slot gallery support.
+              Firestore onSnapshot listening on collection <strong className="text-[#C5A880]">orders</strong>.
             </p>
           </div>
         </div>

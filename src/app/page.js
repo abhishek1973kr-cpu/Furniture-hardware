@@ -16,6 +16,7 @@ import {
   CATEGORIES,
   WAREHOUSE_TOTAL_CAPACITY,
   INITIAL_ITEMS,
+  INITIAL_ORDERS,
 } from "@/data/mockHardwareData";
 import {
   fetchInventoryItems,
@@ -24,12 +25,17 @@ import {
   deleteInventoryItem,
   STORAGE_KEY,
 } from "@/services/inventoryService";
+import {
+  subscribeToOrders,
+  updateOrderStatus,
+} from "@/services/ordersService";
 import { isFirebaseConfigured } from "@/lib/firebase";
 
 export default function DashboardPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [items, setItems] = useState(INITIAL_ITEMS);
+  const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [totalCapacity, setTotalCapacity] = useState(WAREHOUSE_TOTAL_CAPACITY);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -45,7 +51,22 @@ export default function DashboardPage() {
   // Toast Notification State
   const [toast, setToast] = useState(null);
 
-  // Mount effect: safely load from storage / database to avoid any hydration mismatch
+  // Real-time Firestore Orders Subscription with onSnapshot
+  useEffect(() => {
+    const unsubscribe = subscribeToOrders((liveOrders) => {
+      if (Array.isArray(liveOrders)) {
+        setOrders(liveOrders);
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  // Mount effect: safely load items from storage / database
   useEffect(() => {
     setMounted(true);
 
@@ -69,7 +90,7 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Save to localStorage ONLY after client has mounted and when items change
+  // Save items to localStorage ONLY after client has mounted
   useEffect(() => {
     if (mounted && items.length > 0) {
       try {
@@ -137,7 +158,6 @@ export default function DashboardPage() {
   // Handler: Delete item
   const handleDeleteItem = async (itemId, itemName) => {
     const itemToDelete = items.find((i) => i.id === itemId);
-    // Instant UI update
     setItems((prev) => prev.filter((i) => i.id !== itemId));
 
     try {
@@ -158,6 +178,11 @@ export default function DashboardPage() {
     }
   };
 
+  // Handler: Update Order Status in Firestore
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    await updateOrderStatus(orderId, newStatus);
+  };
+
   // Reset data handler
   const handleResetData = () => {
     try {
@@ -172,6 +197,11 @@ export default function DashboardPage() {
       type: "info",
     });
   };
+
+  // Compute pending orders count for sidebar & metrics
+  const pendingOrdersCount = orders.filter(
+    (o) => (o.status || "").toLowerCase() === "pending"
+  ).length;
 
   // ROUTE PROTECTION: Show loading until auth state is determined
   if (authLoading) {
@@ -195,13 +225,15 @@ export default function DashboardPage() {
   // AUTHENTICATED: Render Protected Admin Dashboard
   return (
     <div className="min-h-screen bg-[#F9F8F6] flex">
-      {/* 1. Left Sidebar */}
+      {/* 1. Left Sidebar with Prominent Real-time Orders Section */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
         itemCount={items.length}
+        pendingOrdersCount={pendingOrdersCount}
+        totalOrdersCount={orders.length}
       />
 
       {/* Main Content Area */}
@@ -227,7 +259,7 @@ export default function DashboardPage() {
                     Atelier Overview & Analytics
                   </h1>
                   <p className="text-xs sm:text-sm text-[#666666] mt-1">
-                    Live operational metrics for Smart Living, On-The-Go Comfort, Flexi Work & Dine, and Storage & Utility.
+                    Live operational metrics for incoming customer orders, inventory categories, and vault capacities.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -240,11 +272,13 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* 3. Metric Cards (Top Row) */}
+              {/* 3. Metric Cards with NEW Pending Orders Card */}
               <MetricCards
                 items={items}
                 totalCapacity={totalCapacity}
-                totalOrders={1245}
+                totalOrders={orders.length}
+                orders={orders}
+                onNavigateToOrders={() => setActiveTab("orders")}
               />
 
               {/* 4. Inventory Management Table with '+' Circular Button */}
@@ -263,7 +297,16 @@ export default function DashboardPage() {
             </>
           )}
 
-          {/* Tab 2: Inventory Dedicated View */}
+          {/* Tab 2: Orders View (Prominent Real-Time Orders Tab) */}
+          {activeTab === "orders" && (
+            <OrdersView
+              orders={orders}
+              onUpdateStatus={handleUpdateOrderStatus}
+              onShowToast={setToast}
+            />
+          )}
+
+          {/* Tab 3: Inventory Dedicated View */}
           {activeTab === "inventory" && (
             <div className="space-y-7">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -281,7 +324,9 @@ export default function DashboardPage() {
               <MetricCards
                 items={items}
                 totalCapacity={totalCapacity}
-                totalOrders={1245}
+                totalOrders={orders.length}
+                orders={orders}
+                onNavigateToOrders={() => setActiveTab("orders")}
               />
 
               <InventoryTable
@@ -296,9 +341,6 @@ export default function DashboardPage() {
               />
             </div>
           )}
-
-          {/* Tab 3: Orders View */}
-          {activeTab === "orders" && <OrdersView />}
 
           {/* Tab 4: Storage Space View */}
           {activeTab === "storage" && (
