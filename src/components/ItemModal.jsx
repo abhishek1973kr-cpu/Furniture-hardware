@@ -11,23 +11,37 @@ import {
   Trash2,
   Sparkles,
   Camera,
-  Link as LinkIcon,
-  Layers,
-  IndianRupee,
   Coins,
 } from "lucide-react";
-import { SAMPLE_LUXURY_IMAGES } from "@/data/mockHardwareData";
 
-const SLOT_LABELS = [
-  "Slot 1: Main Product Showcase (Hero)",
-  "Slot 2: Proportions & Angle View",
-  "Slot 3: Material Finish & Texture",
-  "Slot 4: Architectural / In-Room Context",
-  "Slot 5: Craftsmanship & Joinery",
-  "Slot 6: Dimensional Perspective",
-  "Slot 7: Lifestyle & Ambient Shot",
-  "Slot 8: Packaging & Authenticity Kit",
-];
+// Cloudinary Configuration
+const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/nyo286ls/image/upload";
+const CLOUDINARY_UPLOAD_PRESET = "livfabs_preset";
+
+// Helper: Upload a single file to Cloudinary via Unsigned API
+async function uploadToCloudinary(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const res = await fetch(CLOUDINARY_UPLOAD_URL, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(
+      errorJson?.error?.message || `Cloudinary upload failed for ${file.name} (${res.status})`
+    );
+  }
+
+  const data = await res.json();
+  if (!data.secure_url) {
+    throw new Error(`Cloudinary did not return a secure_url for ${file.name}`);
+  }
+  return data.secure_url;
+}
 
 export default function ItemModal({
   isOpen,
@@ -35,44 +49,42 @@ export default function ItemModal({
   onSubmit,
   editingItem = null,
   categories = [],
-  isSaving = false,
+  isSaving: parentIsSaving = false,
+  onShowToast = null,
 }) {
   const [formData, setFormData] = useState({
     name: "",
     category: "Smart Living",
     description: "",
     price: "2450", // Selling Price
-    costPrice: "1550", // Cost Price (Required)
+    costPrice: "1550", // Cost Price
     stock: "",
     spaceRequired: "30",
     location: "Gallery Wing A - Salon 01",
     sku: "",
   });
 
-  // Text input for comma-separated image URLs (Internet Links)
-  const [urlInput, setUrlInput] = useState("");
+  // Array of existing image URL strings
+  const [existingImages, setExistingImages] = useState([]);
 
-  // Up to 8 image slots (Array of 8 items, null if empty)
-  const [imageSlots, setImageSlots] = useState([
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-  ]);
+  // Array of newly selected File objects
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
-  const [activeSlotTarget, setActiveSlotTarget] = useState(null);
+  // Local object URLs for previewing newly selected files
+  const [filePreviews, setFilePreviews] = useState([]);
+
+  // Local saving & status states
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusText, setStatusText] = useState("");
+  const [errorMessage, setErrorMessage] = useState(null);
   const [errors, setErrors] = useState({});
-  const fileInputRef = useRef(null);
-  const singleSlotInputRef = useRef(null);
 
-  // Initialize form state
+  const fileInputRef = useRef(null);
+
+  // Sync state when modal opens or editingItem changes
   useEffect(() => {
     if (editingItem) {
-      const existingImages = Array.isArray(editingItem.images)
+      const existing = Array.isArray(editingItem.images)
         ? editingItem.images.filter(Boolean)
         : [];
 
@@ -92,15 +104,13 @@ export default function ItemModal({
         sku: editingItem.sku || "",
       });
 
-      setUrlInput(existingImages.join(", "));
-
-      // Populate 8 image slots
-      const initialSlots = Array(8).fill(null);
-      existingImages.slice(0, 8).forEach((img, idx) => {
-        initialSlots[idx] = img;
-      });
-      setImageSlots(initialSlots);
+      setExistingImages(existing);
+      setSelectedFiles([]);
+      setFilePreviews([]);
       setErrors({});
+      setErrorMessage(null);
+      setIsSaving(false);
+      setStatusText("");
     } else {
       setFormData({
         name: "",
@@ -113,127 +123,69 @@ export default function ItemModal({
         location: "Gallery Wing A - Salon 01",
         sku: `VBF-${Date.now().toString().slice(-4)}`,
       });
-      setUrlInput("");
-      setImageSlots(Array(8).fill(null));
+      setExistingImages([]);
+      setSelectedFiles([]);
+      setFilePreviews([]);
       setErrors({});
+      setErrorMessage(null);
+      setIsSaving(false);
+      setStatusText("");
     }
   }, [editingItem, isOpen]);
+
+  // Update object URLs whenever selectedFiles changes
+  useEffect(() => {
+    const urls = selectedFiles.map((file) => URL.createObjectURL(file));
+    setFilePreviews(urls);
+
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [selectedFiles]);
 
   // Handle escape key
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === "Escape" && isOpen && !isSaving) {
+      if (e.key === "Escape" && isOpen && !isSaving && !parentIsSaving) {
         onClose();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, isSaving]);
+  }, [isOpen, onClose, isSaving, parentIsSaving]);
 
   if (!isOpen) return null;
 
-  // Handle changes to "Paste Image URLs (comma separated)"
-  const handleUrlInputChange = (e) => {
-    const val = e.target.value;
-    setUrlInput(val);
-
-    // Split by comma or newline, trim whitespace and filter non-empty
-    const parsedUrls = val
-      .split(/[\n,]+/)
-      .map((u) => u.trim())
-      .filter(Boolean);
-
-    setImageSlots((prev) => {
-      const next = Array(8).fill(null);
-      for (let i = 0; i < 8; i++) {
-        if (parsedUrls[i]) {
-          next[i] = parsedUrls[i];
-        } else if (prev[i] instanceof File) {
-          next[i] = prev[i]; // preserve uploaded files if any
-        }
-      }
-      return next;
-    });
-  };
-
-  // Handle batch file uploads as alternative/complement
-  const handleBatchImageUpload = (e) => {
-    const files = Array.from(e.target.files || []);
+  // Handle native file selection
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []).filter((f) =>
+      f.type.startsWith("image/")
+    );
     if (!files.length) return;
 
-    setImageSlots((prev) => {
-      const nextSlots = [...prev];
-      let fileIdx = 0;
-
-      for (let i = 0; i < 8 && fileIdx < files.length; i++) {
-        if (!nextSlots[i]) {
-          nextSlots[i] = files[fileIdx];
-          fileIdx++;
-        }
-      }
-      for (let i = 0; i < 8 && fileIdx < files.length; i++) {
-        nextSlots[i] = files[fileIdx];
-        fileIdx++;
-      }
-      return nextSlots;
-    });
-
+    setSelectedFiles((prev) => [...prev, ...files]);
+    setErrorMessage(null);
     if (e.target) e.target.value = "";
   };
 
-  // Single slot click to upload or replace
-  const handleSlotClick = (slotIndex) => {
-    setActiveSlotTarget(slotIndex);
-    if (singleSlotInputRef.current) {
-      singleSlotInputRef.current.click();
-    }
+  // Remove existing image URL
+  const handleRemoveExistingImage = (index, e) => {
+    if (e) e.stopPropagation();
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSingleSlotUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file && activeSlotTarget !== null) {
-      setImageSlots((prev) => {
-        const next = [...prev];
-        next[activeSlotTarget] = file;
-        return next;
-      });
-    }
-    setActiveSlotTarget(null);
-    if (e.target) e.target.value = "";
+  // Remove pending file
+  const handleRemoveSelectedFile = (index, e) => {
+    if (e) e.stopPropagation();
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Remove a specific image slot
-  const handleRemoveSlot = (index, e) => {
-    e.stopPropagation();
-    setImageSlots((prev) => {
-      const next = [...prev];
-      next[index] = null;
-      // Also update urlInput string if it was populated from it
-      const stringUrls = next.filter((item) => typeof item === "string");
-      setUrlInput(stringUrls.join(", "));
-      return next;
-    });
-  };
-
-  // Autofill 8 demo images for instant luxury catalog preview
-  const handleAutoFillDemoGallery = () => {
-    setImageSlots([...SAMPLE_LUXURY_IMAGES]);
-    setUrlInput(SAMPLE_LUXURY_IMAGES.join(", "));
-  };
-
-  // Clear all 8 slots
-  const handleClearAllSlots = () => {
-    setImageSlots(Array(8).fill(null));
-    setUrlInput("");
-  };
-
-  // Helper to render image source URL
-  const getImagePreviewUrl = (slotItem) => {
-    if (!slotItem) return null;
-    if (typeof slotItem === "string") return slotItem;
-    if (slotItem instanceof File) return URL.createObjectURL(slotItem);
-    if (slotItem.url) return slotItem.url;
-    return null;
+  // Clear all images
+  const handleClearAll = () => {
+    setExistingImages([]);
+    setSelectedFiles([]);
+    setErrorMessage(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const validate = () => {
@@ -268,79 +220,114 @@ export default function ItemModal({
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  /**
+   * REWRITTEN SUBMIT FUNCTION:
+   * 1. Check if files are selected in the new file input.
+   * 2. Upload them to Cloudinary (cloud name: nyo286ls, preset: livfabs_preset) via fetch POST.
+   * 3. Get secure_urls from response.
+   * 4. Save product details + combined Cloudinary URLs to Firestore.
+   * 5. PREVENT HANGING: Wrapped in try...catch...finally, isSaving reset to false in finally.
+   */
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+    if (isSaving || parentIsSaving) return;
 
-    // Parse all direct URLs from input if slots were empty or modified
-    let finalUrls = imageSlots.filter(Boolean);
-    if (urlInput.trim()) {
-      const parsed = urlInput
-        .split(/[\n,]+/)
-        .map((u) => u.trim())
-        .filter((u) => u.startsWith("http://") || u.startsWith("https://") || u.startsWith("data:"));
+    setIsSaving(true);
+    setErrorMessage(null);
 
-      if (parsed.length > 0) {
-        // Use parsed direct internet URLs
-        finalUrls = parsed.slice(0, 8);
+    try {
+      let newCloudinaryUrls = [];
+
+      // Step 1 & 2: If new files are selected, upload to Cloudinary
+      if (selectedFiles && selectedFiles.length > 0) {
+        setStatusText(
+          `Uploading ${selectedFiles.length} ${
+            selectedFiles.length === 1 ? "photo" : "photos"
+          } to Cloudinary...`
+        );
+
+        const uploadPromises = selectedFiles.map((file) =>
+          uploadToCloudinary(file)
+        );
+        newCloudinaryUrls = await Promise.all(uploadPromises);
       }
+
+      // Step 3: Combine new Cloudinary URLs with existing URLs
+      const finalImageUrls = [...existingImages, ...newCloudinaryUrls];
+
+      setStatusText("Saving luxury piece to Firestore...");
+
+      // Step 4: Prepare Firestore inventory payload
+      const priceNum = parseFloat(formData.price) || 0;
+      const costPriceNum = parseFloat(formData.costPrice) || 0;
+
+      const payload = {
+        name: formData.name.trim(),
+        category: formData.category,
+        description: formData.description.trim(),
+        price: priceNum,
+        costPrice: costPriceNum,
+        stock: parseInt(formData.stock, 10),
+        spaceRequired: formData.spaceRequired ? parseInt(formData.spaceRequired, 10) : 25,
+        location: formData.location.trim() || "Gallery Wing A - Salon 01",
+        sku: formData.sku.trim() || `VBF-${Date.now().toString().slice(-4)}`,
+        minStock: 15,
+        supplier: editingItem?.supplier || "VibeFab Atelier",
+        lastUpdated: new Date().toISOString().split("T")[0],
+      };
+
+      // Save to Firestore via parent handler
+      await onSubmit(payload, finalImageUrls);
+    } catch (err) {
+      console.error("Save error:", err);
+      const msg = err?.message || "An error occurred while saving. Please try again.";
+      setErrorMessage(msg);
+
+      if (typeof onShowToast === "function") {
+        onShowToast({
+          title: "Save Failed",
+          message: msg,
+          type: "error",
+        });
+      }
+    } finally {
+      // Step 5: GUARANTEED RESET - Button stops spinning even if error occurs
+      setIsSaving(false);
+      setStatusText("");
     }
-
-    const priceNum = parseFloat(formData.price) || 0;
-    const costPriceNum = parseFloat(formData.costPrice) || 0;
-
-    const payload = {
-      name: formData.name.trim(),
-      category: formData.category,
-      description: formData.description.trim(),
-      price: priceNum,
-      costPrice: costPriceNum,
-      stock: parseInt(formData.stock, 10),
-      spaceRequired: formData.spaceRequired ? parseInt(formData.spaceRequired, 10) : 25,
-      location: formData.location.trim() || "Gallery Wing A - Salon 01",
-      sku: formData.sku.trim() || `VBF-${Date.now().toString().slice(-4)}`,
-      minStock: 15,
-      supplier: editingItem?.supplier || "VibeFab Atelier",
-      lastUpdated: new Date().toISOString().split("T")[0],
-    };
-
-    onSubmit(payload, finalUrls);
   };
 
-  const filledCount = imageSlots.filter(Boolean).length;
+  // Combine items for live gallery preview
+  const previewItems = [
+    ...existingImages.map((url, idx) => ({ type: "existing", url, originalIndex: idx })),
+    ...filePreviews.map((url, idx) => ({
+      type: "pending",
+      url,
+      originalIndex: idx,
+      fileName: selectedFiles[idx]?.name || "",
+    })),
+  ];
+
+  const totalImageCount = previewItems.length;
+  const isBusy = isSaving || parentIsSaving;
   const selectableCategories = categories.filter((c) => c !== "All Categories");
 
   const sellingPriceVal = Number(formData.price) || 0;
   const costPriceVal = Number(formData.costPrice) || 0;
   const unitProfit = sellingPriceVal - costPriceVal;
-  const marginPercentage = sellingPriceVal > 0 ? Math.round((unitProfit / sellingPriceVal) * 100) : 0;
+  const marginPercentage =
+    sellingPriceVal > 0 ? Math.round((unitProfit / sellingPriceVal) * 100) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      {/* Hidden file inputs */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="image/*"
-        onChange={handleBatchImageUpload}
-        className="hidden"
-      />
-      <input
-        ref={singleSlotInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleSingleSlotUpload}
-        className="hidden"
-      />
-
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-[#1A1A1A]/70 backdrop-blur-sm transition-opacity duration-200"
-        onClick={!isSaving ? onClose : undefined}
+        onClick={!isBusy ? onClose : undefined}
       />
 
-      {/* Curvy Overlay Modal Card */}
+      {/* Luxury Modal Container */}
       <div className="relative w-full max-w-4xl bg-[#F9F8F6] rounded-3xl border border-[#E8E2D9] shadow-2xl overflow-hidden z-10 animate-modal-in max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-5 border-b border-[#E8E2D9] flex items-center justify-between bg-white shrink-0">
@@ -353,8 +340,9 @@ export default function ItemModal({
                 <h2 className="text-base sm:text-lg font-serif font-bold text-[#1A1A1A] tracking-tight">
                   {editingItem ? "Edit Luxury Piece" : "Add New Luxury Piece"}
                 </h2>
-                <span className="text-[11px] font-mono font-medium text-[#7A613E] bg-[#F4EFE6] border border-[#E2DACF] px-2.5 py-0.5 rounded-full">
-                  Direct Image Links & Cost Tracking
+                <span className="text-[11px] font-mono font-medium text-[#7A613E] bg-[#F4EFE6] border border-[#E2DACF] px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-[#C5A880]" />
+                  Cloudinary Upload
                 </span>
               </div>
               <p className="text-xs text-[#666666] mt-0.5">
@@ -364,74 +352,93 @@ export default function ItemModal({
           </div>
           <button
             onClick={onClose}
-            disabled={isSaving}
-            className="p-2 rounded-2xl text-[#888888] hover:text-[#1A1A1A] hover:bg-[#F4EFE6] transition-colors disabled:opacity-40"
+            disabled={isBusy}
+            className="p-2 rounded-2xl text-[#888888] hover:text-[#1A1A1A] hover:bg-[#F4EFE6] transition-colors disabled:opacity-40 cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Scrollable Modal Content */}
+        {/* Scrollable Form Content */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-7">
           <form id="luxury-item-form" onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
-              
               {/* ========================================================= */}
-              {/* LEFT COLUMN: IMAGE URL INPUT & LIVE PREVIEW GALLERY       */}
+              {/* LEFT COLUMN: NATIVE CLOUDINARY FILE UPLOADER & PREVIEWS   */}
               {/* ========================================================= */}
               <div className="lg:col-span-6 space-y-4">
-                
-                {/* 1. Direct Image URLs Input (Internet Links) */}
-                <div className="bg-white p-4 rounded-3xl border border-[#E8E2D9] shadow-2xs space-y-2">
+                {/* 1. Native File Upload Button (Labeled "Upload Photos (Cloudinary)") */}
+                <div className="bg-white p-5 rounded-3xl border border-[#E8E2D9] shadow-2xs space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider flex items-center gap-1.5">
-                      <LinkIcon className="w-3.5 h-3.5 text-[#C5A880]" />
-                      <span>Paste Image URLs (comma separated)</span>
+                    <label
+                      htmlFor="cloudinary-photos-input"
+                      className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-[#C5A880]" />
+                      <span>Upload Photos (Cloudinary)</span>
                     </label>
                     <span className="font-mono text-[10.5px] text-[#7A613E] bg-[#F4EFE6] px-2 py-0.5 rounded-full border border-[#E2DACF]">
-                      Bypasses Storage
+                      Preset: livfabs_preset
                     </span>
                   </div>
 
-                  <textarea
-                    rows={2}
-                    value={urlInput}
-                    onChange={handleUrlInputChange}
-                    placeholder="https://images.unsplash.com/photo-1..., https://images.unsplash.com/photo-2..."
-                    className="w-full px-3.5 py-2.5 text-xs rounded-2xl border border-[#E8E2D9] bg-[#FAF8F5] focus:bg-white text-[#1A1A1A] focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 outline-hidden font-mono text-[11px] placeholder-[#999999] transition-all resize-none"
-                  />
-                  <div className="flex items-center justify-between text-[11px] text-[#777777] pt-0.5">
-                    <span>Direct links preview instantly below</span>
-                    <button
-                      type="button"
-                      onClick={handleAutoFillDemoGallery}
-                      className="text-[#C5A880] hover:text-[#7A613E] font-medium flex items-center gap-1 cursor-pointer"
-                    >
-                      <Sparkles className="w-3 h-3" /> Paste 8 Demo URLs
-                    </button>
+                  {/* Native File Input Styled for VibeFab Luxury */}
+                  <div className="space-y-2">
+                    <input
+                      ref={fileInputRef}
+                      id="cloudinary-photos-input"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      disabled={isBusy}
+                      className="block w-full text-xs text-[#1A1A1A] file:mr-3.5 file:py-2.5 file:px-4 file:rounded-2xl file:border-0 file:text-xs file:font-semibold file:bg-[#1A1A1A] file:text-[#F9F8F6] hover:file:bg-[#2C2C2C] file:cursor-pointer file:transition-all cursor-pointer bg-[#FAF8F5] border border-[#E8E2D9] rounded-2xl p-2 focus:border-[#C5A880] focus:outline-hidden disabled:opacity-50"
+                    />
+                    <p className="text-[11px] text-[#666666]">
+                      Select multiple images. Photos will automatically upload to Cloudinary upon saving.
+                    </p>
                   </div>
+
+                  {/* Error Notification */}
+                  {errorMessage && (
+                    <div className="p-3.5 rounded-2xl bg-[#FFF5F5] border border-red-200 text-xs text-red-700 flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-red-800">Error</p>
+                        <p className="text-[11px] text-red-600 mt-0.5">{errorMessage}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setErrorMessage(null)}
+                        className="text-red-400 hover:text-red-700 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Gallery Toolbar Header */}
+                {/* 2. Gallery Header */}
                 <div className="flex items-center justify-between pt-1">
                   <div>
                     <label className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider block">
                       Live Gallery Preview
                     </label>
                     <p className="text-[11px] text-[#666666]">
-                      Slot 1 main hero + 7 perspective sub-slots.
+                      Slot 1 hero showcase + perspective angles.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[11px] font-semibold text-[#7A613E] bg-[#F4EFE6] px-2.5 py-1 rounded-full border border-[#E2DACF]">
-                      {filledCount} / 8 photos
+                      {totalImageCount} {totalImageCount === 1 ? "photo" : "photos"}
                     </span>
-                    {filledCount > 0 && (
+                    {totalImageCount > 0 && (
                       <button
                         type="button"
-                        onClick={handleClearAllSlots}
-                        className="text-xs text-[#888888] hover:text-red-600 transition-colors"
+                        onClick={handleClearAll}
+                        disabled={isBusy}
+                        className="text-xs text-[#888888] hover:text-red-600 transition-colors cursor-pointer disabled:opacity-40"
                       >
                         Clear All
                       </button>
@@ -439,7 +446,7 @@ export default function ItemModal({
                   </div>
                 </div>
 
-                {/* 1. Main Hero Slot (Slot #1 Live Preview) */}
+                {/* 3. Primary Hero Slot (Slot #1 Live Preview) */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px] font-medium text-[#666666]">
                     <span className="font-semibold text-[#1A1A1A] flex items-center gap-1">
@@ -448,115 +455,148 @@ export default function ItemModal({
                     <span className="text-[#888888] font-mono">Hero Display</span>
                   </div>
 
-                  <div
-                    onClick={() => handleSlotClick(0)}
-                    className="group relative w-full h-44 rounded-3xl border-2 border-dashed border-[#D4C7B5] hover:border-[#C5A880] bg-white hover:bg-[#FBF9F6] flex flex-col items-center justify-center cursor-pointer transition-all duration-200 overflow-hidden shadow-xs"
-                  >
-                    {imageSlots[0] ? (
+                  <div className="group relative w-full h-44 rounded-3xl border-2 border-dashed border-[#D4C7B5] hover:border-[#C5A880] bg-white overflow-hidden shadow-xs flex items-center justify-center">
+                    {previewItems[0] ? (
                       <>
                         <img
-                          src={getImagePreviewUrl(imageSlots[0])}
-                          alt="Slot 1 - Hero"
+                          src={previewItems[0].url}
+                          alt="Hero Preview"
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=700&auto=format&fit=crop&q=80";
+                            e.target.src =
+                              "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=700&auto=format&fit=crop&q=80";
                           }}
                         />
-                        <div className="absolute inset-0 bg-[#1A1A1A]/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <span className="text-xs font-medium text-white bg-[#1A1A1A]/80 px-3 py-1.5 rounded-2xl backdrop-blur-xs flex items-center gap-1.5 border border-[#C5A880]/30">
-                            <Camera className="w-3.5 h-3.5 text-[#C5A880]" /> Replace Hero
+
+                        {/* Top Badge */}
+                        <div className="absolute top-2.5 left-2.5">
+                          <span className="px-2.5 py-1 rounded-full bg-[#1A1A1A]/85 text-[#F9F8F6] text-[10px] font-medium backdrop-blur-xs border border-[#C5A880]/30 flex items-center gap-1">
+                            <span className="text-[#C5A880]">★</span> Primary Hero
+                            {previewItems[0].type === "pending" && (
+                              <span className="text-[9px] text-[#C5A880] font-mono">
+                                • Pending Upload
+                              </span>
+                            )}
                           </span>
+                        </div>
+
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-[#1A1A1A]/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                           <button
                             type="button"
-                            onClick={(e) => handleRemoveSlot(0, e)}
-                            className="p-2 bg-red-600/90 text-white rounded-2xl hover:bg-red-700 transition-colors shadow-sm"
-                            title="Remove image"
+                            onClick={(e) => {
+                              if (previewItems[0].type === "existing") {
+                                handleRemoveExistingImage(previewItems[0].originalIndex, e);
+                              } else {
+                                handleRemoveSelectedFile(previewItems[0].originalIndex, e);
+                              }
+                            }}
+                            className="p-2.5 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition-colors shadow-sm cursor-pointer"
+                            title="Remove hero image"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </>
                     ) : (
-                      <div className="text-center p-4">
-                        <div className="w-11 h-11 rounded-2xl bg-[#F4EFE6] border border-[#E2DACF] flex items-center justify-center mx-auto mb-2 text-[#7A613E] group-hover:text-[#1A1A1A] group-hover:scale-105 transition-all">
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-center p-4 cursor-pointer w-full h-full flex flex-col items-center justify-center hover:bg-[#FAF8F5] transition-colors"
+                      >
+                        <div className="w-11 h-11 rounded-2xl bg-[#F4EFE6] border border-[#E2DACF] flex items-center justify-center mx-auto mb-2 text-[#7A613E]">
                           <ImageIcon className="w-5 h-5" />
                         </div>
                         <p className="text-xs font-semibold text-[#1A1A1A]">
                           Primary Showcase Photo
                         </p>
                         <p className="text-[11px] text-[#888888] mt-0.5">
-                          Paste URL above or click to select thumbnail
+                          Select photos using the file upload button above
                         </p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* 2. 7 Smaller Thumbnail Slots (Slots #2 through #8) */}
+                {/* 4. Perspective Sub-Slots */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-[11px] font-medium text-[#666666]">
                     <span className="font-semibold text-[#1A1A1A]">
-                      Editorial & Angles (Slots 2 – 8)
+                      Editorial Perspectives (Slots 2 – {Math.max(8, totalImageCount)})
                     </span>
-                    <span className="text-[#888888] font-mono">7 Sub-slots</span>
+                    <span className="text-[#888888] font-mono">
+                      {Math.max(0, totalImageCount - 1)} added
+                    </span>
                   </div>
 
-                  {/* 7 Box Grid */}
                   <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7].map((slotIdx) => {
-                      const item = imageSlots[slotIdx];
-                      const previewUrl = getImagePreviewUrl(item);
+                    {Array.from({ length: Math.max(7, totalImageCount - 1) }).map(
+                      (_, subIdx) => {
+                        const slotNum = subIdx + 2;
+                        const item = previewItems[subIdx + 1];
 
-                      return (
-                        <div
-                          key={slotIdx}
-                          onClick={() => handleSlotClick(slotIdx)}
-                          className="group relative aspect-square rounded-2xl border-2 border-dashed border-[#D4C7B5] hover:border-[#C5A880] bg-white hover:bg-[#FBF9F6] flex flex-col items-center justify-center cursor-pointer transition-all duration-200 overflow-hidden shadow-xs"
-                          title={SLOT_LABELS[slotIdx]}
-                        >
-                          {item ? (
-                            <>
-                              <img
-                                src={previewUrl}
-                                alt={`Slot ${slotIdx + 1}`}
-                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&auto=format&fit=crop&q=80";
-                                }}
-                              />
-                              <div className="absolute inset-0 bg-[#1A1A1A]/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-1">
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleRemoveSlot(slotIdx, e)}
-                                  className="p-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-xs"
-                                  title="Remove slot image"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                                <span className="text-[9px] text-[#F9F8F6] mt-1 font-mono font-bold">
-                                  #{slotIdx + 1}
+                        return (
+                          <div
+                            key={subIdx}
+                            className="group relative aspect-square rounded-2xl border-2 border-dashed border-[#D4C7B5] hover:border-[#C5A880] bg-white hover:bg-[#FAF8F5] flex flex-col items-center justify-center transition-all overflow-hidden shadow-xs"
+                          >
+                            {item ? (
+                              <>
+                                <img
+                                  src={item.url}
+                                  alt={`Slot ${slotNum}`}
+                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src =
+                                      "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&auto=format&fit=crop&q=80";
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-[#1A1A1A]/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      if (item.type === "existing") {
+                                        handleRemoveExistingImage(item.originalIndex, e);
+                                      } else {
+                                        handleRemoveSelectedFile(item.originalIndex, e);
+                                      }
+                                    }}
+                                    className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-xs cursor-pointer"
+                                    title="Remove slot image"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <span className="text-[9px] text-[#F9F8F6] mt-1 font-mono font-bold">
+                                    #{slotNum}
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-full h-full flex flex-col items-center justify-center text-center p-1 cursor-pointer"
+                              >
+                                <span className="text-[10px] font-mono font-bold text-[#888888] block group-hover:text-[#1A1A1A]">
+                                  #{slotNum}
                                 </span>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-center p-1">
-                              <span className="text-[10px] font-mono font-bold text-[#888888] block group-hover:text-[#1A1A1A]">
-                                #{slotIdx + 1}
-                              </span>
-                              <Camera className="w-3.5 h-3.5 text-[#A59E92] mx-auto mt-0.5 group-hover:text-[#C5A880]" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                                <Camera className="w-3.5 h-3.5 text-[#A59E92] mx-auto mt-0.5 group-hover:text-[#C5A880]" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }
+                    )}
                   </div>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-white border border-[#E8E2D9] text-[11px] text-[#666666] flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-[#C5A880]" />
-                  <span>URLs save directly to Firestore <strong className="text-[#1A1A1A]">inventoryItems</strong>, bypassing Storage.</span>
+                  <span>
+                    Direct Cloudinary upload • URLs stored in Firestore{" "}
+                    <strong className="text-[#1A1A1A]">inventoryItems</strong>.
+                  </span>
                 </div>
               </div>
 
@@ -737,7 +777,7 @@ export default function ItemModal({
                   </div>
                 </div>
 
-                {/* Live Unit Profit Calculation Indicator */}
+                {/* Live Unit Profit Calculation */}
                 {sellingPriceVal > 0 && costPriceVal > 0 && (
                   <div className="p-3 rounded-2xl bg-[#F4EFE6] border border-[#E2DACF] flex items-center justify-between text-xs">
                     <span className="text-[#666666] flex items-center gap-1">
@@ -784,7 +824,7 @@ export default function ItemModal({
                   )}
                 </div>
 
-                {/* Additional Spec Meta (SKU & Storage Location) */}
+                {/* Additional Metadata (SKU & Storage Location) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
                   <div>
                     <label className="block text-xs font-medium text-[#666666] mb-1">
@@ -815,7 +855,6 @@ export default function ItemModal({
                     />
                   </div>
                 </div>
-
               </div>
             </div>
           </form>
@@ -825,28 +864,41 @@ export default function ItemModal({
         <div className="px-6 py-4 border-t border-[#E8E2D9] bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-[#666666] flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#C5A880]" />
-            <span>Saves directly to Firestore <strong className="text-[#1A1A1A]">inventoryItems</strong> collection</span>
+            <span>
+              {statusText ? (
+                <span className="font-medium text-[#7A613E]">{statusText}</span>
+              ) : (
+                <span>
+                  Saves directly to Firestore{" "}
+                  <strong className="text-[#1A1A1A]">inventoryItems</strong> collection
+                </span>
+              )}
+            </span>
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              disabled={isSaving}
-              className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-semibold text-[#444444] hover:text-[#1A1A1A] bg-[#F4EFE6] hover:bg-[#EAE2D5] rounded-2xl transition-colors disabled:opacity-50"
+              disabled={isBusy}
+              className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-semibold text-[#444444] hover:text-[#1A1A1A] bg-[#F4EFE6] hover:bg-[#EAE2D5] rounded-2xl transition-colors disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               form="luxury-item-form"
-              disabled={isSaving}
-              className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-semibold text-[#1A1A1A] bg-[#C5A880] hover:bg-[#B3956D] active:scale-98 rounded-2xl shadow-sm transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              disabled={isBusy}
+              className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-semibold text-[#1A1A1A] bg-[#C5A880] hover:bg-[#B3956D] active:scale-98 rounded-2xl shadow-sm transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer min-w-[170px]"
             >
-              {isSaving ? (
+              {isBusy ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
-                  <span>Saving to Firebase...</span>
+                  <span>
+                    {statusText.includes("Cloudinary")
+                      ? "Uploading Photos..."
+                      : "Saving to Firebase..."}
+                  </span>
                 </>
               ) : (
                 <>

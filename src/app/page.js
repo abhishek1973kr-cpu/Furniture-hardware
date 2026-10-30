@@ -358,7 +358,7 @@ export default function DashboardPage() {
         </main>
       </div>
 
-      {/* 5. Advanced Add / Edit Item Modal (With 8-Image Gallery Support) */}
+      {/* 5. Advanced Add / Edit Item Modal (With Cloudinary File Upload) */}
       <ItemModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -366,6 +366,7 @@ export default function DashboardPage() {
         editingItem={editingItem}
         categories={CATEGORIES}
         isSaving={isSaving}
+        onShowToast={setToast}
       />
 
       {/* 6. Toast Notification */}

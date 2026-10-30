@@ -82,11 +82,14 @@ export async function fetchInventoryItems() {
  */
 export async function processItemImages(itemId, imageSlots = []) {
   const processed = [];
+  const maxSlots = Math.max(8, imageSlots.length);
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < maxSlots; i++) {
     const item = imageSlots[i];
     if (!item) {
-      processed.push(null);
+      if (i < 8) {
+        processed.push(null);
+      }
       continue;
     }
 
@@ -125,6 +128,16 @@ export async function processItemImages(itemId, imageSlots = []) {
   return processed;
 }
 
+// Helper: Prevent Firestore hangs by timing out slow or unresolving network calls after 6s
+const firestoreTimeout = (promise, ms = 6000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Firestore request timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+};
+
 /**
  * Add a new luxury inventory item (mirrors addDoc to "inventoryItems")
  */
@@ -141,14 +154,16 @@ export async function createInventoryItem(itemData, rawImageSlots = []) {
 
   if (isFirebaseConfigured && db) {
     try {
-      const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-        ...payload,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      const docRef = await firestoreTimeout(
+        addDoc(collection(db, COLLECTION_NAME), {
+          ...payload,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      );
       return { id: docRef.id, ...payload };
     } catch (error) {
-      console.warn("Firestore addDoc error, saving locally:", error);
+      console.warn("Firestore addDoc error or timeout, saving locally:", error);
     }
   }
 
@@ -171,13 +186,15 @@ export async function updateInventoryItem(itemId, itemData, rawImageSlots = []) 
   if (isFirebaseConfigured && db) {
     try {
       const itemRef = doc(db, COLLECTION_NAME, itemId);
-      await updateDoc(itemRef, {
-        ...payload,
-        updatedAt: serverTimestamp(),
-      });
+      await firestoreTimeout(
+        updateDoc(itemRef, {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        })
+      );
       return { id: itemId, ...payload };
     } catch (error) {
-      console.warn("Firestore updateDoc error, saving locally:", error);
+      console.warn("Firestore updateDoc error or timeout, saving locally:", error);
     }
   }
 
